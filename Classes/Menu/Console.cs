@@ -393,7 +393,7 @@ namespace Seralyth.Classes.Menu
         public static IEnumerator DownloadAdminTextures()
         {
             {
-                string fileName = $"{ConsoleResourceLocation}/cone.png";
+                string fileName = $"{ConsoleResourceLocation}/icon.png";
 
                 if (File.Exists(fileName))
                     File.Delete(fileName);
