@@ -1238,7 +1238,7 @@ namespace Seralyth.Mods
                                 VRRig vrrig = GetVRRigFromPlayer(sender);
                                 if (!nametags.TryGetValue(vrrig, out var nametag))
                                 {
-                                    GameObject go = new GameObject("Seralyth_Nametag");
+                                    GameObject go = new GameObject("Seralyth_MenuUserNametag");
                                     go.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
                                     TextMeshPro textMesh = go.AddComponent<TextMeshPro>();
                                     textMesh.fontSize = 4.8f;
