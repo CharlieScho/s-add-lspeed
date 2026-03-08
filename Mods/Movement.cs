@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Seralyth Menu  Mods/Movement.cs
  * A community driven mod menu for Gorilla Tag with over 1000+ mods
  *
@@ -2779,8 +2779,8 @@ namespace Seralyth.Mods
 
             if (Buttons.GetIndex("Factored Speed Boost").enabled)
             {
-                jspt = jspt / 6.5f * GTPlayer.Instance.maxJumpSpeed;
-                jmpt = jmpt / 1.1f * GTPlayer.Instance.jumpMultiplier;
+                jspt = jspt / 9f * GTPlayer.Instance.maxJumpSpeed;
+                jmpt = jmpt / 5f * GTPlayer.Instance.jumpMultiplier;
             }
 
             if (!Buttons.GetIndex("Disable Max Speed Modification").enabled)
@@ -2788,6 +2788,24 @@ namespace Seralyth.Mods
 
             GTPlayer.Instance.jumpMultiplier = jmpt;
         }
+
+        public static void LowSpeed()
+        {
+            float jspt = jspeed;
+            float jmpt = jmulti;
+
+            if (Buttons.GetIndex("Factored Speed Boost").enabled)
+            {
+                jspt = jspt / 2f * GTPlayer.Instance.maxJumpSpeed;
+                jmpt = jmpt / 0.1f * GTPlayer.Instance.jumpMultiplier;
+            }
+
+            if (!Buttons.GetIndex("Disable Max Speed Modification").enabled)
+                GTPlayer.Instance.maxJumpSpeed = jspt;
+
+            GTPlayer.Instance.jumpMultiplier = jmpt;
+        }
+
 
         public static void FunMove() =>
             GorillaTagger.Instance.rigidbody.linearVelocity += GorillaTagger.Instance.rigidbody.linearVelocity * Time.deltaTime;
