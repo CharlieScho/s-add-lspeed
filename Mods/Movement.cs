@@ -2779,8 +2779,8 @@ namespace Seralyth.Mods
 
             if (Buttons.GetIndex("Factored Speed Boost").enabled)
             {
-                jspt = jspt / 9f * GTPlayer.Instance.maxJumpSpeed;
-                jmpt = jmpt / 5f * GTPlayer.Instance.jumpMultiplier;
+                jspt = jspt / 6.5f * GTPlayer.Instance.maxJumpSpeed;
+                jmpt = jmpt / 1.1f * GTPlayer.Instance.jumpMultiplier;
             }
 
             if (!Buttons.GetIndex("Disable Max Speed Modification").enabled)
