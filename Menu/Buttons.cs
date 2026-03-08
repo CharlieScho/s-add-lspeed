@@ -669,6 +669,7 @@ namespace Seralyth.Menu
                 new ButtonInfo { buttonText = "Timer", enableMethod =() => TimerPatch.enabled = true, method = Movement.Timer, disableMethod =() => { TimerPatch.enabled = false; Time.timeScale = 1f; GTPlayer.Instance.debugMovement = false;  }, toolTip = "Speeds up or slows down the time of your game."},
 
                 new ButtonInfo { buttonText = "Speed Boost", method = Movement.SpeedBoost, toolTip = "Changes your speed to whatever you set it to."},
+                new ButtonInfo { buttonText = "Low Speed", method = Movement.LowSpeed, toolTip = "Makes you very slow."},
                 new ButtonInfo { buttonText = "Grip Speed Boost", method =() => { if (rightGrab) { Movement.SpeedBoost(); } }, toolTip = "Changes your speed to whatever you set it to, if you're holding right grip."},
                 new ButtonInfo { buttonText = "Dynamic Speed Boost", method = Movement.DynamicSpeedBoost, toolTip = "Dynamically changes your speed to whatever you set it to when tagged players get closer to you."},
                 new ButtonInfo { buttonText = "Uncap Max Velocity", aliases = new[] { "Velmax" }, method =() => GTPlayer.Instance.maxJumpSpeed = float.MaxValue, toolTip = "Removes the velocity limit of walking."},
