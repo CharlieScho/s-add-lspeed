@@ -374,7 +374,7 @@ namespace Seralyth.Menu
             else
             {
                 if (dynamicSounds)
-                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/console.ogg", "Audio/Menu/console.ogg").Play(buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/console.ogg", "Audio/Menu/console.ogg", clip => clip.Play(buttonClickVolume / 10f));
 
                 debugUI.SetActive(true);
             }

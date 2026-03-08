@@ -4887,7 +4887,7 @@ namespace Seralyth.Mods
             modPhrases.Start();
 
             if (dynamicSounds)
-                DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/select.ogg", "Audio/Menu/select.ogg"), buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/select.ogg", "Audio/Menu/select.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
             
             NotificationManager.SendNotification("<color=grey>[</color><color=purple>VOICE</color><color=grey>]</color> Listening...", 3000);
         }
@@ -4942,14 +4942,14 @@ namespace Seralyth.Mods
                 ButtonInfo mod = Buttons.GetIndex(modTarget);
                 NotificationManager.SendNotification("<color=grey>[</color><color=" + (mod.enabled ? "red" : "green") + ">VOICE</color><color=grey>]</color> " + (mod.enabled ? "Disabling " : "Enabling ") + (mod.overlapText ?? mod.buttonText) +"...", 3000);
                 if (dynamicSounds)
-                    DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/confirm.ogg", "Audio/Menu/confirm.ogg"), buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/confirm.ogg", "Audio/Menu/confirm.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
                 
                 Toggle(modTarget, true, true);
             } else
             {
                 NotificationManager.SendNotification("<color=grey>[</color><color=red>VOICE</color><color=grey>]</color> No command found ("+args.text+").", 3000);
                 if (dynamicSounds)
-                    DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg"), buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
             }
         }
 
@@ -4970,7 +4970,7 @@ namespace Seralyth.Mods
             
             NotificationManager.SendNotification($"<color=grey>[</color><color=red>VOICE</color><color=grey>]</color> {(text == "i hate you" ? "I hate you too." : "Cancelling...")}", 3000);
             if (dynamicSounds)
-                DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg"), buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
         }
 
         public static void VoiceRecognitionOff()
@@ -5029,10 +5029,11 @@ namespace Seralyth.Mods
 
         public static IEnumerator DictationRecognizer()
         {
+            if (AIManager.generating)
+                yield break;
+
             ButtonInfo mod = Buttons.GetIndex("AI Assistant");
-
-           
-
+            
             PhraseRecognitionSystem.Shutdown();
             while (PhraseRecognitionSystem.Status != SpeechSystemStatus.Stopped)
                 yield return null;
@@ -5040,11 +5041,11 @@ namespace Seralyth.Mods
             switch (narratorName)
             {
                 case "Mommy ASMR":
-                    DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/TTS/yes_sweetheart.ogg", "Audio/TTS/yes_sweetheart.ogg"), buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/TTS/yes_sweetheart.ogg", "Audio/TTS/yes_sweetheart.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
                     NotificationManager.SendNotification("<color=grey>[</color><color=#ffb6c1>MOMMY</color><color=grey>]</color> Yes, sweetheart?", 3000);
                     break;
                 default:
-                    DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/select.ogg", "Audio/Menu/select.ogg"), buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/select.ogg", "Audio/Menu/select.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
                     NotificationManager.SendNotification("<color=grey>[</color><color=purple>VOICE</color><color=grey>]</color> Listening...", 3000);
                     break;
             }
@@ -5060,7 +5061,7 @@ namespace Seralyth.Mods
                 if (cancelKeywords.Contains(text.ToLower()))
                 {
                     if (dynamicSounds)
-                        DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg"), buttonClickVolume / 10f);
+                        LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
                         
                     NotificationManager.SendNotification($"<color=grey>[</color><color=red>AI</color><color=grey>]</color> {(text.ToLower() == "i hate you" ? "I hate you too." : "Cancelling...")}", 3000);
                     CoroutineManager.instance.StartCoroutine(DictationRestart());
@@ -5091,7 +5092,7 @@ namespace Seralyth.Mods
                 if (completionCause.ToString() == "TimeoutExceeded")
                 {
                     if (dynamicSounds)
-                        DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg"), buttonClickVolume / 10f);
+                        LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg", clip => DictationPlay(clip, buttonClickVolume / 10f));
                     NotificationManager.SendNotification($"<color=grey>[</color><color=red>AI</color><color=grey>]</color> Cancelling...", 3000);
                 }
             };
@@ -5111,8 +5112,6 @@ namespace Seralyth.Mods
 
             drec.DictationHypothesis += (text) =>
             {
-                if (AIManager.generating)
-                    return;
                 if (debugDictation)
                     LogManager.Log($"Hypothesis: {text}");
 
@@ -6050,7 +6049,9 @@ namespace Seralyth.Mods
                 Overpowered.lagTypeIndex.ToString(),
                 Overpowered.masterVisualizationType.ToString(),
                 Movement.targetHz.ToString(),
-                Safety.pingSpoofValue.ToString()
+                Safety.pingSpoofValue.ToString(),
+                Fun.soundboardVolumeIndex.ToString(),
+                Fun.soundboardSpeedIndex.ToString()
             };
 
             string settingstext = string.Join(seperator, settings);

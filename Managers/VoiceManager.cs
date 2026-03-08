@@ -25,7 +25,7 @@
 using Photon.Voice;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Seralyth.Managers
@@ -34,8 +34,10 @@ namespace Seralyth.Managers
     {
         private int samplingRate = 48000;
         private int outputRate = 48000;
-        private float gain = 1;
+        private float gain = 1f;
+        private float clipGain = 1f;
         private float pitch = 1f;
+        private float clipPitch;
 
         private readonly int loopLength;
         private string currentDevice;
@@ -45,17 +47,23 @@ namespace Seralyth.Managers
 
         private string error;
 
-        private float[] tempBuffer;
-        private float resample;
+        private float[] rawMicrophoneData;
+        private float[] microphoneBuffer;
+        private float resamplePointer;
+
+        private readonly object audioClipsLock = new object();
+
         public sealed class Clip
         {
             public Guid Id { get; set; }
             public AudioClip Source { get; set; }
             public float[] Samples;
+            public int Channels; // Added to track if the clip is mono or stereo
             public float Position;
             public float Step;
             public bool MuteMicrophone;
             public float Gain = 1f;
+            public float Pitch = 1f;
         }
 
         private readonly List<Clip> audioClips = new List<Clip>();
@@ -64,14 +72,24 @@ namespace Seralyth.Managers
 
         public VoiceManager(int loopLength = 1, string device = null)
         {
-            this.loopLength = loopLength;
+            this.loopLength = Mathf.Max(1, loopLength);
+            Instance ??= this;
             StartRecording(device);
         }
 
         /// <summary>
-        /// A read-only list of AudioClips currently playing
+        /// A read-only list of AudioClips currently playing.
         /// </summary>
-        public IReadOnlyList<Clip> AudioClips => audioClips;
+        public IReadOnlyList<Clip> AudioClips
+        {
+            get
+            {
+                lock (audioClipsLock)
+                {
+                    return audioClips.ToArray();
+                }
+            }
+        }
 
         /// <summary>
         /// Gets or sets the microphone's recording status. This does not stop the pushed AudioClip from playing.
@@ -88,7 +106,11 @@ namespace Seralyth.Managers
         public int SamplingRate
         {
             get { return samplingRate; }
-            set { samplingRate = value; RestartMicrophone(); }
+            set
+            {
+                samplingRate = Mathf.Max(8000, value);
+                RestartMicrophone();
+            }
         }
 
         /// <summary>
@@ -97,7 +119,11 @@ namespace Seralyth.Managers
         public int OutputRate
         {
             get { return outputRate; }
-            set { outputRate = value; RestartMicrophone(); }
+            set
+            {
+                outputRate = Mathf.Max(8000, value);
+                RestartMicrophone();
+            }
         }
 
         /// <summary>
@@ -106,7 +132,16 @@ namespace Seralyth.Managers
         public float Gain
         {
             get { return gain; }
-            set { gain = value; }
+            set { gain = Mathf.Max(0f, value); }
+        }
+
+        /// <summary>
+        /// Gets or sets the default AudioClip gain multiplier for the Instance.
+        /// </summary>
+        public float ClipGain
+        {
+            get { return clipGain; }
+            set { clipGain = Mathf.Max(0f, value); }
         }
 
         /// <summary>
@@ -119,7 +154,16 @@ namespace Seralyth.Managers
         }
 
         /// <summary>
-        /// A list of post processers that can be used to edit the buffer after all the audio data is compiled.
+        /// Gets or sets the default clip pitch. Lowest possible value can be 0.1f.
+        /// </summary>
+        public float ClipPitch
+        {
+            get => clipPitch;
+            set => clipPitch = Mathf.Max(0.1f, value);
+        }
+
+        /// <summary>
+        /// A list of post processors that can be used to edit the buffer after all the audio data is compiled.
         /// </summary>
         public readonly Dictionary<string, Action<float[]>> PostProcessors = new Dictionary<string, Action<float[]>>();
 
@@ -128,7 +172,7 @@ namespace Seralyth.Managers
         /// </summary>
         public bool PostProcessClip { get; set; }
 
-        public int Channels => 1;
+        public int Channels => 2;
         public string Error => error;
         public string CurrentDevice => currentDevice;
 
@@ -137,9 +181,8 @@ namespace Seralyth.Managers
         /// <summary>
         /// Returns a valid VoiceManager instance. If the Instance variable is null, it will create a new VoiceManager.
         /// </summary>
-        /// <param name="loopLength">Length (in seconds) of the looping mic buffer, handled by Unity when the microphone is started, only used if the instance is null.</param>
-        /// <param name="device">The microphone device to be used in recording, if the instance is null.</param>
-        /// <returns></returns>
+        /// <param name="loopLength">Length (in seconds) of the looping mic buffer.</param>
+        /// <param name="device">The microphone device to be used in recording.</param>
         public static VoiceManager Get(int loopLength = 1, string device = null)
         {
             return Instance ??= new VoiceManager(loopLength, device);
@@ -148,26 +191,57 @@ namespace Seralyth.Managers
         /// <summary>
         /// Starts the microphone recording.
         /// </summary>
-        /// <param name="device"> Microphone device name to be used. If empty, the default microphone is selected.</param>
+        /// <param name="device">Microphone device name to be used. If empty, the default microphone is selected.</param>
         public bool StartRecording(string device = null)
         {
             error = null;
 
-            if (Microphone.devices.Length == 0)
+            if (Microphone.devices == null || Microphone.devices.Length == 0)
             {
                 error = "No microphone devices found";
                 LogManager.LogWarning(error);
                 return false;
             }
 
-            currentDevice = string.IsNullOrEmpty(device) ? Microphone.devices[0] : device;
+            if (string.IsNullOrEmpty(device))
+                currentDevice = Microphone.devices[0];
+            else
+            {
+                bool found = false;
+                for (int i = 0; i < Microphone.devices.Length; i++)
+                {
+                    if (Microphone.devices[i] == device)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    error = $"Microphone device '{device}' not found";
+                    LogManager.LogError(error);
+                    return false;
+                }
+
+                currentDevice = device;
+            }
 
             if (Microphone.IsRecording(currentDevice))
                 Microphone.End(currentDevice);
 
             microphoneClip = Microphone.Start(currentDevice, true, loopLength, samplingRate);
+
+            if (microphoneClip == null)
+            {
+                error = $"Failed to start microphone '{currentDevice}'";
+                LogManager.LogError(error);
+                return false;
+            }
+
             lastSamplePosition = 0;
-            step = samplingRate / (float)OutputRate;
+            step = (samplingRate / (float)OutputRate);
+            resamplePointer = 0f;
             return true;
         }
 
@@ -181,13 +255,13 @@ namespace Seralyth.Managers
 
             microphoneClip = null;
             lastSamplePosition = 0;
+            resamplePointer = 0f;
             return true;
         }
 
         /// <summary>
         /// Switches the microphone device and restarts recording.
         /// </summary>
-        /// <param name="device">Microphone device name to be used.</param>
         public bool SwitchMicrophone(string device)
             => StopRecording() && StartRecording(device);
 
@@ -198,169 +272,200 @@ namespace Seralyth.Managers
             => StopRecording() && StartRecording(currentDevice);
 
         /// <summary>
-        /// Pushes an <see cref="UnityEngine.AudioClip"/> into the output stream.
+        /// Pushes an AudioClip into the output stream.
         /// </summary>
-        /// <param name="clip"><see cref="UnityEngine.AudioClip"/> to play.</param>
-        /// <param name="disableMicrophone">Whether to mute the microphone while the clip plays.</param>
-        /// <returns><see cref="System.Guid"/></returns>
         public Guid AudioClip(AudioClip clip, bool disableMicrophone = false)
         {
             if (clip == null)
                 return Guid.Empty;
 
-            if (clip.frequency != OutputRate)
-                clip = Resample(clip, OutputRate);
+            Guid id = Guid.NewGuid();
 
-            int channels = clip.channels;
-            float[] raw = new float[clip.samples * channels];
-            clip.GetData(raw, 0);
-
-            float[] mono = new float[clip.samples];
-            if (channels == 1)
+            Task.Run(() =>
             {
-                for (int i = 0; i < clip.samples; i++)
-                    mono[i] = raw[i];
-            }
-            else
-            {
-                for (int i = 0; i < clip.samples; i++)
+                try
                 {
-                    float sum = 0f;
-                    int baseIndex = i * channels;
-                    for (int c = 0; c < channels; c++)
-                        sum += raw[baseIndex + c];
-                    mono[i] = sum / channels;
-                }
-            }
+                    int channels = Mathf.Max(1, clip.channels);
+                    float[] raw = new float[clip.samples * channels];
+                    clip.GetData(raw, 0);
 
-            var id = Guid.NewGuid();
-            audioClips.Add(new Clip
-            {
-                Id = id,
-                Source = clip,
-                Samples = mono,
-                Position = 0f,
-                Step = clip.frequency / (float)OutputRate,
-                MuteMicrophone = disableMicrophone
+                    if (clip.frequency != OutputRate)
+                        raw = Resample(raw, clip.frequency, OutputRate, channels);
+
+                    var clipState = new Clip
+                    {
+                        Id = id,
+                        Source = clip,
+                        Samples = raw,
+                        Channels = channels,
+                        Position = 0f,
+                        Step = 1f,
+                        MuteMicrophone = disableMicrophone,
+                        Gain = clipGain
+                    };
+
+                    lock (audioClipsLock)
+                        audioClips.Add(clipState);
+                }
+                catch (Exception e)
+                {
+                    LogManager.LogError($"Failed to add audio clip: {e}");
+                }
             });
 
             return id;
         }
 
         /// <summary>
-        /// Resamples the given <see cref="UnityEngine.AudioClip"/> to the specified sample rate.
+        /// Resamples a raw float array to the target sample rate.
         /// </summary>
-        /// <param name="source">The <see cref="UnityEngine.AudioClip"/> to be resampled.</param>
-        /// <param name="targetSampleRate">The desired sample rate for the resulting audio clip.</param>
-        /// <returns>A new <see cref="UnityEngine.AudioClip"/> containing the resampled audio data.</returns>
-
-        // this is pretty heavy, but the only fix I could think of for making clip length consistent.
-        public static AudioClip Resample(AudioClip source, int sampleRate)
+        public static float[] Resample(float[] source, int sourceRate, int targetRate, int channels)
         {
-            if (source == null || source.frequency == sampleRate)
+            if (source == null || source.Length == 0 || sourceRate <= 0 || sourceRate == targetRate)
                 return source;
 
-            int channels = source.channels;
-            int sourceSamples = source.samples;
+            int sourceSamples = Mathf.Max(1, source.Length / channels);
+            float lengthInSeconds = (float)sourceSamples / sourceRate;
+            int targetSamples = Mathf.Max(1, Mathf.RoundToInt(lengthInSeconds * targetRate));
 
-            float[] sourceData = new float[sourceSamples * channels];
-            source.GetData(sourceData, 0);
+            float[] target = new float[targetSamples * channels];
 
-            int targetSamples = Mathf.CeilToInt(source.length * sampleRate);
-            float[] targetData = new float[targetSamples * channels];
-
-            float ratio = (float)(sourceSamples - 1) / (targetSamples - 1);
-
-            for (int i = 0; i < targetSamples; i++)
+            if (sourceSamples == 1 || targetSamples == 1)
             {
-                float srcIndex = i * ratio;
-                int index = Mathf.FloorToInt(srcIndex);
-                int next = Mathf.Min(index + 1, sourceSamples - 1);
-                float t = srcIndex - index;
+                for (int c = 0; c < channels && c < target.Length; c++)
+                    target[c] = source[Mathf.Clamp(c, 0, source.Length - 1)];
+            }
+            else
+            {
+                float ratio = (sourceSamples - 1f) / (targetSamples - 1f);
 
-                for (int c = 0; c < channels; c++)
-                    targetData[i * channels + c] = Mathf.Lerp(sourceData[index * channels + c], sourceData[next * channels + c], t);
+                for (int i = 0; i < targetSamples; i++)
+                {
+                    float p = i * ratio;
+                    int a = Mathf.Clamp((int)p, 0, sourceSamples - 1);
+                    int b = Mathf.Clamp(a + 1, 0, sourceSamples - 1);
+                    float t = p - a;
+
+                    for (int c = 0; c < channels; c++)
+                    {
+                        int o = i * channels + c;
+                        int ia = Mathf.Clamp(a * channels + c, 0, source.Length - 1);
+                        int ib = Mathf.Clamp(b * channels + c, 0, source.Length - 1);
+                        target[o] = Mathf.Lerp(source[ia], source[ib], t);
+                    }
+                }
             }
 
-            var resampled = UnityEngine.AudioClip.Create(
-                source.name,
-                targetSamples,
-                channels,
-                sampleRate,
-                false
-            );
-
-            resampled.SetData(targetData, 0);
-            return resampled;
+            return target;
         }
 
         /// <summary>
-        /// Stops the specified <see cref="UnityEngine.AudioClip"/> from playing.
+        /// Stops the specified AudioClip from playing.
         /// </summary>
-        /// <param name="id">The GUID of the <see cref="UnityEngine.AudioClip"/> to stop.</param>
         public bool StopAudioClip(Guid id)
         {
-            int index = audioClips.FindIndex(c => c.Id == id);
-            if (index == -1) return false;
+            lock (audioClipsLock)
+            {
+                int index = audioClips.FindIndex(c => c.Id == id);
+                if (index == -1) return false;
 
-            audioClips.RemoveAt(index);
-            return true;
+                audioClips.RemoveAt(index);
+                return true;
+            }
         }
 
-
         /// <summary>
-        /// Stops all the currently playing audio clips.
+        /// Stops all currently playing audio clips.
         /// </summary>
-        public void StopAudioClips() =>
-            audioClips.Clear();
+        public void StopAudioClips()
+        {
+            lock (audioClipsLock)
+                audioClips.Clear();
+        }
 
         /// <summary>
         /// Used to pull the next chunk of audio samples.
+        /// Automatically called by Photon.
         /// </summary>
-
-        // this is automatically called by photon
         public bool Read(float[] buffer)
         {
-            if (microphoneClip == null || string.IsNullOrEmpty(currentDevice)) return false;
+            if (buffer == null || buffer.Length == 0)
+                return false;
 
-            int samples = Mathf.CeilToInt(buffer.Length * step);
-            int pos = Microphone.GetPosition(currentDevice);
-            int available = (pos < lastSamplePosition) ? microphoneClip.samples - lastSamplePosition + pos : pos - lastSamplePosition;
-            if (available < samples) return false;
+            if (microphoneClip == null || string.IsNullOrEmpty(currentDevice))
+                return false;
 
-            if (tempBuffer == null || tempBuffer.Length != samples)
-                tempBuffer = new float[samples];
+            int outputFrames = buffer.Length / Channels;
+            int micChannels = microphoneClip.channels;
+            int micFramesNeeded = Mathf.CeilToInt(outputFrames * step);
 
-            int remaining = microphoneClip.samples - lastSamplePosition;
-            if (remaining >= samples)
-                microphoneClip.GetData(tempBuffer, lastSamplePosition);
-            else
+            int microphoneSamples = microphoneClip.samples * micChannels;
+            if (rawMicrophoneData == null || rawMicrophoneData.Length != microphoneSamples)
+                rawMicrophoneData = new float[microphoneSamples];
+
+            if (microphoneBuffer == null || microphoneBuffer.Length != buffer.Length)
+                microphoneBuffer = new float[buffer.Length];
+
+            int pos = Microphone.GetPosition(currentDevice) * micChannels;
+
+            int available = (pos < lastSamplePosition)
+                ? microphoneSamples - lastSamplePosition + pos
+                : pos - lastSamplePosition;
+
+            if (available < micFramesNeeded * micChannels)
+                return false;
+
+            microphoneClip.GetData(rawMicrophoneData, 0);
+
+            bool muteMicForClip = false;
+            lock (audioClipsLock)
             {
-                microphoneClip.GetData(tempBuffer, lastSamplePosition);
-                int wrap = samples - remaining;
-                float[] wrapBuffer = new float[wrap];
-                microphoneClip.GetData(wrapBuffer, 0);
-                Array.Copy(wrapBuffer, 0, tempBuffer, remaining, wrap);
+                for (int i = 0; i < audioClips.Count; i++)
+                {
+                    if (audioClips[i].MuteMicrophone)
+                    {
+                        muteMicForClip = true;
+                        break;
+                    }
+                }
             }
 
-            float[] microphoneBuffer = new float[buffer.Length];
-            for (int i = 0; i < buffer.Length; i++)
+            for (int i = 0; i < buffer.Length; i += Channels)
             {
-                float microphoneSample = 0;
-                if (!muteMicrophone && !audioClips.Any(c => c.MuteMicrophone))
+                float micSampleLeft = 0f;
+                float micSampleRight = 0f;
+
+                if (!muteMicrophone && !muteMicForClip)
                 {
-                    int index = (int)resample;
-                    int nextIndex = index + 1;
-                    if (index >= tempBuffer.Length) { resample = 0f; index = 0; nextIndex = 1; }
-                    if (nextIndex >= tempBuffer.Length) nextIndex = 0;
+                    int sampleOffset = (int)resamplePointer;
+                    float frac = resamplePointer - sampleOffset;
 
-                    microphoneSample = Mathf.Lerp(tempBuffer[index], tempBuffer[nextIndex], resample - index);
+                    int baseIndexA = (lastSamplePosition + sampleOffset * micChannels) % rawMicrophoneData.Length;
+                    int baseIndexB = (lastSamplePosition + (sampleOffset + 1) * micChannels) % rawMicrophoneData.Length;
 
-                    resample += step * pitch;
-                    if (resample >= tempBuffer.Length) resample = 0f;
+                    if (micChannels == 1)
+                    {
+                        float sampleA = rawMicrophoneData[baseIndexA];
+                        float sampleB = rawMicrophoneData[baseIndexB];
+                        micSampleLeft = micSampleRight = Mathf.Lerp(sampleA, sampleB, frac);
+                    }
+                    else
+                    {
+                        float sampleAL = rawMicrophoneData[baseIndexA];
+                        float sampleAR = rawMicrophoneData[baseIndexA + 1];
+                        float sampleBL = rawMicrophoneData[baseIndexB];
+                        float sampleBR = rawMicrophoneData[baseIndexB + 1];
+
+                        micSampleLeft = Mathf.Lerp(sampleAL, sampleBL, frac);
+                        micSampleRight = Mathf.Lerp(sampleAR, sampleBR, frac);
+                    }
+
+                    resamplePointer += step * pitch;
                 }
 
-                microphoneBuffer[i] = microphoneSample * gain;
+                microphoneBuffer[i] = micSampleLeft * gain;
+                if (Channels > 1 && i + 1 < buffer.Length)
+                    microphoneBuffer[i + 1] = micSampleRight * gain;
             }
 
             if (!PostProcessClip)
@@ -369,10 +474,13 @@ namespace Seralyth.Managers
                     postProcess?.Invoke(microphoneBuffer);
             }
 
-            for (int i = 0; i < buffer.Length; i++)
+            for (int i = 0; i < buffer.Length; i += Channels)
             {
-                float pushed = NextAudioClipSample();
-                buffer[i] = Mathf.Clamp(microphoneBuffer[i] + pushed, -1f, 1f);
+                NextAudioClipSample(out float pushedLeft, out float pushedRight);
+
+                buffer[i] = Mathf.Clamp(microphoneBuffer[i] + pushedLeft, -1f, 1f);
+                if (Channels > 1 && i + 1 < buffer.Length)
+                    buffer[i + 1] = Mathf.Clamp(microphoneBuffer[i + 1] + pushedRight, -1f, 1f);
             }
 
             if (PostProcessClip)
@@ -381,54 +489,87 @@ namespace Seralyth.Managers
                     postProcess?.Invoke(buffer);
             }
 
-            lastSamplePosition = (lastSamplePosition + samples) % microphoneClip.samples;
+            int framesConsumed = (int)resamplePointer;
+            lastSamplePosition = (lastSamplePosition + framesConsumed * micChannels) % rawMicrophoneData.Length;
+            resamplePointer -= framesConsumed;
+
             return true;
         }
 
-
         /// <summary>
-        /// Returns the next sample from the pushed audio buffer each time the Read() function is called.
+        /// Returns the next left and right samples from pushed audio clips.
         /// </summary>
-        private float NextAudioClipSample()
+        private void NextAudioClipSample(out float outLeft, out float outRight)
         {
-            if (audioClips.Count == 0)
-                return 0f;
+            outLeft = 0f;
+            outRight = 0f;
 
-            float mixed = 0f;
-
-            for (int i = audioClips.Count - 1; i >= 0; i--)
+            lock (audioClipsLock)
             {
-                var clip = audioClips[i];
+                if (audioClips.Count == 0)
+                    return;
 
-                int index = (int)clip.Position;
-
-                if (index >= clip.Samples.Length)
+                for (int i = audioClips.Count - 1; i >= 0; i--)
                 {
-                    audioClips.RemoveAt(i);
-                    continue;
+                    var clip = audioClips[i];
+                    int index = (int)clip.Position;
+                    int maxFrames = clip.Samples.Length / clip.Channels;
+
+                    if (index >= maxFrames)
+                    {
+                        audioClips.RemoveAt(i);
+                        continue;
+                    }
+
+                    int nextIndex = index + 1;
+                    float left = 0f;
+                    float right = 0f;
+
+                    if (nextIndex >= maxFrames)
+                    {
+                        if (clip.Channels == 1)
+                            left = right = clip.Samples[index] * clip.Gain;
+                        else
+                        {
+                            left = clip.Samples[index * 2] * clip.Gain;
+                            right = clip.Samples[index * 2 + 1] * clip.Gain;
+                        }
+                        audioClips.RemoveAt(i);
+                    }
+                    else
+                    {
+                        float frac = clip.Position - index;
+                        if (clip.Channels == 1)
+                        {
+                            left = right = Mathf.Lerp(clip.Samples[index], clip.Samples[nextIndex], frac) * clip.Gain;
+                        }
+                        else
+                        {
+                            float l1 = clip.Samples[index * 2];
+                            float r1 = clip.Samples[index * 2 + 1];
+                            float l2 = clip.Samples[nextIndex * 2];
+                            float r2 = clip.Samples[nextIndex * 2 + 1];
+
+                            left = Mathf.Lerp(l1, l2, frac) * clip.Gain;
+                            right = Mathf.Lerp(r1, r2, frac) * clip.Gain;
+                        }
+
+                        clip.Position += Mathf.Max(0.0001f, clip.Step * clip.Pitch); // zero
+                    }
+
+                    outLeft += left;
+                    outRight += right;
                 }
-
-                int nextIndex = index + 1;
-                if (nextIndex >= clip.Samples.Length)
-                {
-                    mixed += clip.Samples[index] * clip.Gain;
-                    audioClips.RemoveAt(i);
-                    continue;
-                }
-
-                float frac = clip.Position - index;
-                mixed += Mathf.Lerp(clip.Samples[index], clip.Samples[nextIndex], frac) * clip.Gain;
-
-                clip.Position += clip.Step;
             }
-
-            return mixed;
         }
 
         public void Dispose()
         {
             StopRecording();
-            Instance = null;
-        }  
+            StopAudioClips();
+
+            if (ReferenceEquals(Instance, this))
+                Instance = null;
+        }
     }
 }

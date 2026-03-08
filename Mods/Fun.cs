@@ -102,6 +102,48 @@ namespace Seralyth.Mods
                 VRRig.LocalRig.head.trackingRotationOffset.x = Mathf.Lerp(VRRig.LocalRig.head.trackingRotationOffset.x, 0f, 0.1f);
         }
 
+        public static float soundboardVolumeIndex = 1;
+        public static void ChangeSoundboardVolume(bool positive = true)
+        {
+            if (positive)
+                soundboardVolumeIndex += 0.1f;
+            else
+                soundboardVolumeIndex -= 0.1f;
+
+            if (soundboardVolumeIndex > 5)
+                soundboardVolumeIndex = 0;
+            if (soundboardVolumeIndex < 0)
+                soundboardVolumeIndex = 5;
+
+            soundboardVolumeIndex = Mathf.Round(soundboardVolumeIndex * 10f) / 10f;
+
+            VoiceManager.Get().AudioClips.ForEach(t => t.Gain = soundboardVolumeIndex);
+            VoiceManager.Get().ClipGain = soundboardVolumeIndex;
+
+            Buttons.GetIndex("Change Soundboard Volume").overlapText = "Change Soundboard Volume <color=grey>[</color><color=green>" + soundboardVolumeIndex + "</color><color=grey>]</color>";
+        }
+
+        public static float soundboardSpeedIndex = 1;
+        public static void ChangeSoundboardPitch(bool positive = true)
+        {
+            if (positive)
+                soundboardSpeedIndex += 0.1f;
+            else
+                soundboardSpeedIndex -= 0.1f;
+
+            if (soundboardSpeedIndex > 5)
+                soundboardSpeedIndex = 0;
+            if (soundboardSpeedIndex < 0)
+                soundboardSpeedIndex = 5;
+
+            soundboardSpeedIndex = Mathf.Round(soundboardSpeedIndex * 10f) / 10f;
+
+            VoiceManager.Get().AudioClips.ForEach(t => t.Pitch = soundboardSpeedIndex);
+            VoiceManager.Get().ClipPitch = soundboardSpeedIndex;
+
+            Buttons.GetIndex("Change Soundboard Speed").overlapText = "Change Soundboard Speed <color=grey>[</color><color=green>" + soundboardSpeedIndex + "</color><color=grey>]</color>";
+        }
+
         public static int headSpinIndex;
         public static void ChangeHeadSpinSpeed(bool positive = true)
         {
@@ -697,7 +739,7 @@ namespace Seralyth.Mods
 
         public static IEnumerator JumpscareCoroutine()
         {
-            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/jumpscare.ogg", "Audio/Mods/Fun/jumpscare.ogg").Play();
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/jumpscare.ogg", "Audio/Mods/Fun/jumpscare.ogg", clip => clip.Play());
 
             HueShift(Color.black);
             GameObject jumpscareObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -821,7 +863,7 @@ namespace Seralyth.Mods
                 RaycastHit Ray = GunData.Ray;
 
                 foreach (VRRig rig in VRRigCache.Instance.GetAllRigs())
-                    rig.voiceAudio.volume = rig != lockTarget ? 0.2f : 1f;
+                    rig.voiceAudio.volume = rig != lockTarget ? 0.1f : 1f;
 
                 if (GetGunInput(true))
                 {
@@ -845,7 +887,7 @@ namespace Seralyth.Mods
                 RaycastHit Ray = GunData.Ray;
 
                 foreach (VRRig rig in VRRigCache.Instance.GetAllRigs())
-                    rig.voiceAudio.volume = rig != lockTarget ? 1f : 0.2f;
+                    rig.voiceAudio.volume = rig != lockTarget ? 1f : 0.1f;
 
                 if (GetGunInput(true))
                 {
@@ -1912,23 +1954,45 @@ namespace Seralyth.Mods
                 buffer.Clear();
         }
 
-        public static void SetMicrophoneSamplingRate(int bitrate, int samplingRate)
+        public static void SetMicrophoneQuality(int bitrate, int samplingRate)
         {
+
             if (!PhotonNetwork.InRoom)
                 return;
+
+            if (!NetworkSystem.Instance.LocalRecorder)
+                return;
+
+            Recorder mic = NetworkSystem.Instance.VoiceConnection.PrimaryRecorder;
 
             if (RecorderPatch.enabled)
             {
                 if (VoiceManager.Get().SamplingRate != samplingRate)
                 {
                     VoiceManager.Get().SamplingRate = samplingRate; 
-                    VoiceManager.Get().RestartMicrophone();
+                    VoiceManager.Get().OutputRate = samplingRate;
                 }
+                
+                if (NetworkSystem.Instance.VoiceSettings.SamplingRate != (SamplingRate)samplingRate)
+                    NetworkSystem.Instance.VoiceSettings.SamplingRate = (SamplingRate)samplingRate;
+
+                if (NetworkSystem.Instance.VoiceSettings.Bitrate != bitrate)
+                    NetworkSystem.Instance.VoiceSettings.Bitrate = bitrate;
+
+                if (mic.IsRecording)
+                {
+                    if (mic.Bitrate != bitrate)
+                        mic.Bitrate = bitrate;
+
+                    if (mic.SamplingRate != (SamplingRate)samplingRate)
+                        mic.SamplingRate = (SamplingRate)samplingRate;
+
+                    mic.RestartRecording();
+                }
+
             }   
             else
             {
-                Recorder mic = GorillaTagger.Instance.myRecorder;
-
                 if (mic.SamplingRate == (SamplingRate)samplingRate && mic.Bitrate == bitrate)
                     return;
 
@@ -1948,7 +2012,7 @@ namespace Seralyth.Mods
                 VoiceManager.Get().Gain = amplify ? 16f : 1;
             else
             {
-                Recorder mic = GorillaTagger.Instance.myRecorder;
+                Recorder mic = NetworkSystem.Instance.VoiceConnection.PrimaryRecorder;
 
                 if (amplify)
                 {
@@ -1975,19 +2039,6 @@ namespace Seralyth.Mods
                 CoroutineManager.instance.StartCoroutine(DelayReloadMicrophone());
             }
                 
-        }
-
-        public static void SetMicrophoneBitrate(int bitrate, bool changeDefault = true)
-        {
-            if (!GorillaTagger.Instance.myRecorder)
-                return;
-            if (NetworkSystem.Instance.VoiceSettings.Bitrate != bitrate && changeDefault)
-                NetworkSystem.Instance.VoiceSettings.Bitrate = bitrate;
-            if (GorillaTagger.Instance.myRecorder.IsInitialized && GorillaTagger.Instance.myRecorder.Bitrate != bitrate)
-            {
-                GorillaTagger.Instance.myRecorder.Bitrate = bitrate;
-                GorillaTagger.Instance.myRecorder.RestartRecording();
-            }
         }
 
         public static void EchoMicrophone(bool status)
@@ -2131,7 +2182,7 @@ namespace Seralyth.Mods
             {
                 if (!PhotonNetwork.InRoom)
                     return;
-                Recorder mic = GorillaTagger.Instance.myRecorder;
+                Recorder mic = NetworkSystem.Instance.VoiceConnection.PrimaryRecorder;
                 if (mic.IsRecording != mute)
                     return;
                 mic.IsRecording = !mute;
@@ -2147,7 +2198,7 @@ namespace Seralyth.Mods
                 VoiceManager.Get().Pitch = pitch;
             else
             {
-                Recorder mic = GorillaTagger.Instance.myRecorder;
+                Recorder mic = NetworkSystem.Instance.VoiceConnection.PrimaryRecorder;
 
                 if (!Mathf.Approximately(pitch, 1f))
                 {
@@ -2177,8 +2228,8 @@ namespace Seralyth.Mods
 
         public static void SetDebugEchoMode(bool value)
         {
-            if (GorillaTagger.Instance.myRecorder != null)
-                GorillaTagger.Instance.myRecorder.DebugEchoMode = value;
+            if (NetworkSystem.Instance.VoiceConnection.PrimaryRecorder != null)
+                NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = value;
         }
 
         private static LoopbackFactory factory;
@@ -2232,8 +2283,8 @@ namespace Seralyth.Mods
 
                                 factory = new LoopbackFactory();
 
-                                GorillaTagger.Instance.myRecorder.SourceType = Recorder.InputSourceType.Factory;
-                                GorillaTagger.Instance.myRecorder.InputFactory = () =>
+                                NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.SourceType = Recorder.InputSourceType.Factory;
+                                NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.InputFactory = () =>
                                 {
                                     return factory;
                                 };
@@ -2241,7 +2292,7 @@ namespace Seralyth.Mods
                             }
                         }
                             
-                        GorillaTagger.Instance.myRecorder.DebugEchoMode = true;
+                        NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = true;
                     }
                 }
             }
@@ -2290,9 +2341,9 @@ namespace Seralyth.Mods
                     LogManager.Log($"Dictation result: {text}");
                 NotificationManager.SendNotification($"<color=grey>[</color><color=green>VOICE</color><color=grey>]</color> {text}");
 
-                if (GorillaTagger.Instance.myRecorder != null)
+                if (NetworkSystem.Instance.VoiceConnection.PrimaryRecorder != null)
                 {
-                    GorillaTagger.Instance.myRecorder.IsRecording = true;
+                    NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.IsRecording = true;
                     if (PhotonNetwork.InRoom)
                         SpeakText(text, true);
                     else
@@ -2325,14 +2376,14 @@ namespace Seralyth.Mods
             drec?.Stop();
             drec?.Dispose();
 
-            GorillaTagger.Instance.myRecorder.IsRecording = true;
+            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.IsRecording = true;
         }
 
         public static void ProcessFrameBuffer(float[] data) =>
             factory.Feed(data);
 
         public static void ReloadMicrophone() =>
-            GorillaTagger.Instance.myRecorder.RestartRecording(true);
+            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.RestartRecording(true);
 
         public static IEnumerator DelayReloadMicrophone()
         {
@@ -3134,7 +3185,7 @@ Piece Name: {gunTarget.name}";
             if (!slingshot) return;
 
             if (slingshot.InDrawingState() && !lastDrawing)
-                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/AngryBirds/drawing.ogg", "Audio/Mods/Fun/AngryBirds/drawing.ogg").Play(buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/AngryBirds/drawing.ogg", "Audio/Mods/Fun/AngryBirds/drawing.ogg", clip => clip.Play(buttonClickVolume / 10f));
 
             lastDrawing = slingshot.InDrawingState();
         }

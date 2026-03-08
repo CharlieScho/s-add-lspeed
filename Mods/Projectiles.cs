@@ -155,7 +155,7 @@ namespace Seralyth.Mods
 
             Buttons.GetIndex("Friend Projectile Scale").overlapText = "Friend Projectile Scale <color=grey>[</color><color=green>" + friendProjectileScale + "</color><color=grey>]</color>";
         }
-        public static void LaunchLocalProjectile(Vector3 position, Vector3 velocity, int projectileType, int index, bool overrideColor, Color32 color, int scale, SnowballThrowable throwable, VRRig rig)
+        public static void LaunchLocalProjectile(Vector3 position, Vector3 velocity, int projectileType, int index, bool overrideColor, Color32 color, int scale, int projectileHash, VRRig rig)
         {
             try
             {
@@ -171,7 +171,7 @@ namespace Seralyth.Mods
                 }
                 else
                 {
-                    GameObject go = ObjectPools.instance.Instantiate(throwable.projectilePrefab, true);
+                    GameObject go = ObjectPools.instance.Instantiate(projectileHash, true);
                     SlingshotProjectile projectile = go.GetComponent<SlingshotProjectile>();
                     projectile.Launch(position, velocity, null, false, false, index, scale, overrideColor, color);
                 }
@@ -334,7 +334,7 @@ namespace Seralyth.Mods
                             if (launchLocally)
                             {
                                 projectileSendData.Add(friendProjectileScale);
-                                projectileSendData.Add(Throwable);
+                                projectileSendData.Add(Throwable.ProjectileHash);
                                 sendEventData.Add("sendProjectile");
                                 sendEventData.Add(projectileSendData.ToArray());
                             } else
@@ -346,7 +346,7 @@ namespace Seralyth.Mods
 
                             
                             if (showSelf)
-                                LaunchLocalProjectile(position, velocity, projectileSource, index, true, color32, friendSided ? friendProjectileScale : 1, Throwable, VRRig.LocalRig);
+                                LaunchLocalProjectile(position, velocity, projectileSource, index, true, color32, friendSided ? friendProjectileScale : 1, Throwable.ProjectileHash, VRRig.LocalRig);
                             if (!clientSided && NetworkSystem.Instance.InRoom)
                             {
                                 PhotonNetwork.RaiseEvent(friendSided ? FriendManager.FriendByte : (byte)3, sendEventData.ToArray(), options, SendOptions.SendReliable);
@@ -356,7 +356,7 @@ namespace Seralyth.Mods
                     }
                 }
                 if (projDebounceType > 0f)
-                    projDebounce = Time.time + (projDebounceType + (projDebounceType == 0f ? 0f : 0.01f));
+                    projDebounce = Time.time + projDebounceType;
             }
             catch (Exception e) { LogManager.LogError($"Projectile error: {e.Message}. Full exception:\n{e}"); }
         }
@@ -563,7 +563,7 @@ namespace Seralyth.Mods
         }
 
         public static float projDebounce;
-        public static float projDebounceType = 0.1f;
+        public static float projDebounceType = 0.4f;
         public static int projDebounceIndex = 2;
         public static void ChangeProjectileDelay(bool positive = true, bool fromMenu = false)
         {

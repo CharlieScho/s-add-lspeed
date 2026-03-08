@@ -621,23 +621,23 @@ namespace Seralyth.Menu
                             {
                                 AudioSource audioSource = SwapGunHand ? VRRig.LocalRig.leftHandPlayer : VRRig.LocalRig.rightHandPlayer;
                                 audioSource.volume = buttonClickVolume / 10f;
-                                audioSource.PlayOneShot(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/grip-press.ogg", "Audio/Guns/grip-press.ogg"));
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/grip-press.ogg", "Audio/Guns/grip-press.ogg", clip => audioSource.PlayOneShot(clip));
                             }
 
                             if (GetGunInput(true) && (!lastGunTrigger || (handAudioManager != null && !handAudioManager.GetComponent<AudioSource>().isPlaying)))
                             {
                                 AudioSource audioSource = SwapGunHand ? VRRig.LocalRig.leftHandPlayer : VRRig.LocalRig.rightHandPlayer;
                                 audioSource.volume = buttonClickVolume / 10f;
-                                audioSource.PlayOneShot(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-press.ogg", "Audio/Guns/trigger-press.ogg"));
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-press.ogg", "Audio/Guns/trigger-press.ogg", clip => audioSource.PlayOneShot(clip));
 
-                                PlayHandAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-hold.ogg", "Audio/Guns/trigger-hold.ogg"), buttonClickVolume / 10f, SwapGunHand);
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-hold.ogg", "Audio/Guns/trigger-hold.ogg", clip => PlayHandAudio(clip, buttonClickVolume / 10f, SwapGunHand));
                             }
 
                             if (!GetGunInput(true) && lastGunTrigger)
                             {
                                 AudioSource audioSource = SwapGunHand ? VRRig.LocalRig.leftHandPlayer : VRRig.LocalRig.rightHandPlayer;
                                 audioSource.volume = buttonClickVolume / 10f;
-                                audioSource.PlayOneShot(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-release.ogg", "Audio/Guns/trigger-release.ogg"));
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-release.ogg", "Audio/Guns/trigger-release.ogg", clip => audioSource.PlayOneShot(clip));
 
                                 handAudioManager?.GetComponent<AudioSource>().Stop();
                             }
@@ -648,7 +648,7 @@ namespace Seralyth.Menu
                             {
                                 AudioSource audioSource = SwapGunHand ? VRRig.LocalRig.leftHandPlayer : VRRig.LocalRig.rightHandPlayer;
                                 audioSource.volume = buttonClickVolume / 10f;
-                                audioSource.PlayOneShot(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/grip-release.ogg", "Audio/Guns/grip-release.ogg"));
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/grip-release.ogg", "Audio/Guns/grip-release.ogg", clip => audioSource.PlayOneShot(clip));
                             }
 
                             if (handAudioManager != null && handAudioManager.GetComponent<AudioSource>().isPlaying)
@@ -657,7 +657,7 @@ namespace Seralyth.Menu
 
                                 AudioSource audioSource = SwapGunHand ? VRRig.LocalRig.leftHandPlayer : VRRig.LocalRig.rightHandPlayer;
                                 audioSource.volume = buttonClickVolume / 10f;
-                                audioSource.PlayOneShot(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-release.ogg", "Audio/Guns/trigger-release.ogg"));
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Guns/trigger-release.ogg", "Audio/Guns/trigger-release.ogg", clip => audioSource.PlayOneShot(clip));
                             }
                         }
 
@@ -763,7 +763,7 @@ namespace Seralyth.Menu
                     } else if (RecorderPatch.enabled)
                     {
                         if (!Buttons.GetIndex("Microphone Feedback").enabled)
-                            GorillaTagger.Instance.myRecorder.DebugEchoMode = VoiceManager.Get().AudioClips.Any() || VoiceManager.Get().PostProcessors.Any();
+                            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = VoiceManager.Get().AudioClips.Any() || VoiceManager.Get().PostProcessors.Any();
 
                     }
                     
@@ -817,7 +817,7 @@ namespace Seralyth.Menu
                         if (js.x > 0.5f)
                         {
                             if (dynamicSounds)
-                                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/next.ogg", "Audio/Menu/next.ogg"), buttonClickVolume / 10f);
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/next.ogg", "Audio/Menu/next.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
                             Toggle("NextPage");
                             joystickDelay = Time.time + 0.2f;
@@ -825,7 +825,7 @@ namespace Seralyth.Menu
                         if (js.x < -0.5f)
                         {
                             if (dynamicSounds)
-                                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/prev.ogg", "Audio/Menu/prev.ogg"), buttonClickVolume / 10f);
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/prev.ogg", "Audio/Menu/prev.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
                             Toggle("PreviousPage");
                             joystickDelay = Time.time + 0.2f;
@@ -834,7 +834,7 @@ namespace Seralyth.Menu
                         if (js.y > 0.5f)
                         {
                             if (dynamicSounds)
-                                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/open.ogg", "Audio/Menu/up.ogg"), buttonClickVolume / 10f);
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/open.ogg", "Audio/Menu/up.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
                             joystickButtonSelected--;
                             if (joystickButtonSelected < 0)
@@ -846,7 +846,7 @@ namespace Seralyth.Menu
                         if (js.y < -0.5f)
                         {
                             if (dynamicSounds)
-                                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/down.ogg"), buttonClickVolume / 10f);
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/down.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
                             joystickButtonSelected++;
                             joystickButtonSelected %= lastButton;
@@ -858,7 +858,7 @@ namespace Seralyth.Menu
                         if (leftJoystickClick)
                         {
                             if (dynamicSounds)
-                                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/select.ogg", "Audio/Menu/select.ogg"), buttonClickVolume / 10f);
+                                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/select.ogg", "Audio/Menu/select.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
                             ButtonInfo button = Buttons.GetIndex(joystickSelectedButton);
                             if (button.incremental)
@@ -3326,7 +3326,7 @@ namespace Seralyth.Menu
             } catch { }
             
             if (dynamicSounds)
-                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/open.ogg", "Audio/Menu/open.ogg"), buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/open.ogg", "Audio/Menu/open.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
             CreateMenu();
 
@@ -3370,7 +3370,7 @@ namespace Seralyth.Menu
             
             GetObject("Shoulder Camera").transform.Find("CM vcam1").gameObject.SetActive(true);
             if (dynamicSounds)
-                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg"), buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
             try
             {
@@ -3408,7 +3408,7 @@ namespace Seralyth.Menu
                     try
                     {
                         if (dynamicSounds)
-                            Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/explosion.ogg", "Audio/Menu/explosion.ogg"), buttonClickVolume / 10f);
+                            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/explosion.ogg", "Audio/Menu/explosion.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
                         foreach (GameObject gameObject in menu.transform.Children().Select(transform => transform.gameObject))
                         {
@@ -4226,7 +4226,7 @@ namespace Seralyth.Menu
         private static string versionArchive;
         public static void UpdatePrompt(string newVersion = null)
         {
-            Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/Notifications/win7-exc.ogg", "Audio/Menu/Notifications/win7-exc.ogg"), buttonClickVolume / 10f);
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/Notifications/win7-exc.ogg", "Audio/Menu/Notifications/win7-exc.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
             versionArchive ??= newVersion;
             Prompt($"A new version is available ({versionArchive}). Would you like to update?", Settings.UpdateMenu);
@@ -4907,8 +4907,8 @@ namespace Seralyth.Menu
                 }
             }
 
-            onComplete?.Invoke(LoadSoundFromFile($"{directoryPath[$"{PluginInfo.BaseDirectory}/".Length..]}/{fileName}"));
-        }
+			LoadSoundFromFile($"{directoryPath[$"{PluginInfo.BaseDirectory}/".Length..]}/{fileName}", onComplete);
+		}
 
         /// <summary>
         /// Initiates narration of the specified text by transcribing it to audio and playing it with adjusted volume.
@@ -4939,7 +4939,7 @@ namespace Seralyth.Menu
         public static void SetupAdminPanel(string playername)
         {
             if (dynamicSounds)
-                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/admin.ogg", "Audio/Menu/admin.ogg").Play(buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/admin.ogg", "Audio/Menu/admin.ogg", clip => clip.Play(buttonClickVolume / 10f));
 
             List<ButtonInfo> buttons = Buttons.buttons[Buttons.GetCategory("Main")].ToList();
             buttons.Add(new ButtonInfo { buttonText = "Admin Mods", method = () => Buttons.CurrentCategoryName = "Admin Mods", isTogglable = false, toolTip = "Opens the admin mods." });
@@ -5916,7 +5916,7 @@ namespace Seralyth.Menu
                 if (exclusivePageSounds && buttonText != null && (buttonText == "PreviousPage" || buttonText == "NextPage"))
                 {
                     string url = buttonText == "PreviousPage" ? "prev.ogg" : buttonText == "NextPage" ? "next.ogg" : null;
-                    if (url != null) Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/{url}", $"Audio/Menu/{url}"), buttonClickVolume / 10f);
+                    if (url != null) LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/{url}", $"Audio/Menu/{url}", clip => Play2DAudio(clip, buttonClickVolume / 10f));
                     rightHand = archiveRightHand;
                     return;
                 }
@@ -5974,7 +5974,7 @@ namespace Seralyth.Menu
 
                     AudioSource audioSource = rightHand ? VRRig.LocalRig.leftHandPlayer : VRRig.LocalRig.rightHandPlayer;
                     audioSource.volume = buttonClickVolume / 10f;
-                    audioSource.PlayOneShot(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/Buttons/{namesToIds[buttonClickIndex]}.ogg", $"Audio/Menu/Buttons/{namesToIds[buttonClickIndex]}.ogg"));
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/Buttons/{namesToIds[buttonClickIndex]}.ogg", $"Audio/Menu/Buttons/{namesToIds[buttonClickIndex]}.ogg", clip => audioSource.PlayOneShot(clip));
                 }
             } catch { }
             rightHand = archiveRightHand;

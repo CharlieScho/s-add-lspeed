@@ -103,7 +103,11 @@ namespace Seralyth.Managers
                         LogManager.LogError($"Response Body: {request.downloadHandler.text}");
                 }   
                 NotificationManager.SendNotification($"<color=grey>[</color><color=red>ERROR</color><color=grey>]</color> There was an issue generating your response. {request.error}", 4000);
-                Settings.DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg"), Main.buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/close.ogg", "Audio/Menu/close.ogg", clip =>
+                {
+                    if (clip != null)
+                        Settings.DictationPlay(clip, Main.buttonClickVolume / 10f);
+                });
                 if (!Buttons.GetIndex("Chain Voice Commands").enabled)
                     CoroutineManager.instance.StartCoroutine(Settings.DictationRestart());
                 yield break;
@@ -116,7 +120,14 @@ namespace Seralyth.Managers
             MatchCollection matches = Regex.Matches(response, @"<([A-Z]+)(?:_""([^""]*)"")?>");
 
             if (Main.dynamicSounds)
-                Settings.DictationPlay(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/confirm.ogg", "Audio/Menu/confirm.ogg"), Main.buttonClickVolume / 10f);
+            {
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/confirm.ogg", "Audio/Menu/confirm.ogg", clip =>
+                {
+                    if (clip != null)
+                        Settings.DictationPlay(clip, Main.buttonClickVolume / 10f);
+                });
+            }
+                
 
             string formatResponse = Regex.Replace(response, @"<([A-Z]+)(?:_""([^""]*)"")?>", "").Replace("\n", "");
             NotificationManager.ClearAllNotifications();

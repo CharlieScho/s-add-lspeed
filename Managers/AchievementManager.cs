@@ -93,7 +93,7 @@ namespace Seralyth.Managers
             if (HasAchievement(achievement.name))
                 return;
 
-            Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/achievement.ogg", "Audio/Menu/achievement.ogg"), buttonClickVolume / 10f);
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/achievement.ogg", "Audio/Menu/achievement.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
             NotificationManager.SendNotification($"<color=grey>[</color><color=purple>ACHIEVEMENT</color><color=grey>]</color> Achievement unlocked! \"{achievement.name}\"");
 
             Achievements.Add(achievement);

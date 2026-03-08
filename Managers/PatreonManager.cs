@@ -238,7 +238,12 @@ namespace Seralyth.Managers
             Buttons.buttons[Buttons.GetCategory("Main")] = buttons.ToArray();
 
             if (Main.dynamicSounds)
-                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/patreon.ogg", "Audio/Menu/patreon.ogg").Play(Main.buttonClickVolume / 10f);
+            {
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/patreon.ogg", "Audio/Menu/patreon.ogg", clip =>
+                {
+                    clip?.Play(Main.buttonClickVolume / 10f);
+                });
+            }  
         }
 
         public static void ShowIndicator(bool enabled) =>

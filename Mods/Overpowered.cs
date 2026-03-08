@@ -4151,9 +4151,8 @@ namespace Seralyth.Mods
 
         public static void Enable_Kamehameha()
         {
-            KameStart = LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Kamehameha/start.ogg", "Audio/Mods/Overpowered/Kamehameha/start.ogg");
-            KameStop = LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Kamehameha/end.ogg", "Audio/Mods/Overpowered/Kamehameha/end.ogg");
-
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Kamehameha/start.ogg", "Audio/Mods/Overpowered/Kamehameha/start.ogg", clip => KameStart = clip);
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Kamehameha/end.ogg", "Audio/Mods/Overpowered/Kamehameha/end.ogg", clip => KameStop = clip);
         }
 
         public static void Kamehameha()
@@ -5266,8 +5265,8 @@ namespace Seralyth.Mods
 
         public static void ZaWarudo_enableMethod()
         {
-            ZaWarudo_Start = LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Timestop/start.ogg", "Audio/Mods/Overpowered/Timestop/start.ogg");
-            ZaWarudo_Stop = LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Timestop/end.ogg", "Audio/Mods/Overpowered/Timestop/end.ogg");
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Timestop/start.ogg", "Audio/Mods/Overpowered/Timestop/start.ogg", clip => ZaWarudo_Start = clip);
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Overpowered/Timestop/end.ogg", "Audio/Mods/Overpowered/Timestop/end.ogg", clip => ZaWarudo_Stop = clip);
         }
 
         private static bool zaWarudoTrigger;

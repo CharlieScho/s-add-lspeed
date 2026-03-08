@@ -20,6 +20,7 @@
  */
 
 using Seralyth.Managers;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -62,42 +63,77 @@ namespace Seralyth.Utilities
         }
 
         public static readonly Dictionary<string, AudioClip> audioFilePool = new Dictionary<string, AudioClip>();
-        public static AudioClip LoadSoundFromFile(string fileName) // Thanks to ShibaGT for help with loading the audio from file
+
+        public static void LoadSoundFromFile(string fileName, System.Action<AudioClip> onLoaded)
         {
-            AudioClip sound;
-            if (!audioFilePool.TryGetValue(fileName, out var value))
+            CoroutineManager.instance.StartCoroutine(Load());
+
+            IEnumerator Load()
             {
+                if (audioFilePool.TryGetValue(fileName, out var cached) && cached != null)
+                {
+                    onLoaded?.Invoke(cached);
+                    yield break;
+                }
+
                 string filePath = $"{GetGamePath()}/{PluginInfo.BaseDirectory}/{fileName}";
+                string url = $"file://{filePath}";
 
-                UnityWebRequest actualrequest = UnityWebRequestMultimedia.GetAudioClip($"file://{filePath}", GetAudioType(GetFileExtension(fileName)));
-                UnityWebRequestAsyncOperation newvar = actualrequest.SendWebRequest();
-                while (!newvar.isDone) { }
+                var handler = new DownloadHandlerAudioClip(url, GetAudioType(GetFileExtension(fileName)));
 
-                AudioClip actualclip = DownloadHandlerAudioClip.GetContent(actualrequest);
-                sound = Task.FromResult(actualclip).Result;
+                using UnityWebRequest request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbGET, handler, null);
 
-                audioFilePool.Add(fileName, sound);
+                yield return request.SendWebRequest();
+
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    LogManager.LogError($"Failed to load audio file '{fileName}': {request.error}");
+                    onLoaded?.Invoke(null);
+                    yield break;
+                }
+
+                AudioClip clip = handler.audioClip;
+
+                if (clip != null)
+                    audioFilePool[fileName] = clip;
+
+                onLoaded?.Invoke(clip);
             }
-            else
-                sound = value;
-
-            return sound;
         }
 
-        public static AudioClip LoadSoundFromURL(string resourcePath, string fileName)
+        public static void LoadSoundFromURL(string resourcePath, string fileName, System.Action<AudioClip> action = null)
         {
-            string filePath = $"{PluginInfo.BaseDirectory}/{fileName}";
-            string directory = Path.GetDirectoryName(filePath);
-            if (!Directory.Exists(directory))
-                // ReSharper disable once AssignNullToNotNullAttribute
-                Directory.CreateDirectory(directory);
+            CoroutineManager.instance.StartCoroutine(Load());
 
-            if (File.Exists(filePath)) return LoadSoundFromFile(fileName);
-            LogManager.Log("Downloading " + fileName);
-            using WebClient stream = new WebClient();
-            stream.DownloadFile(resourcePath, filePath);
+            IEnumerator Load()
+            {
+                string filePath = $"{PluginInfo.BaseDirectory}/{fileName}";
+                string directory = Path.GetDirectoryName(filePath);
 
-            return LoadSoundFromFile(fileName);
+                if (!Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
+
+                if (!File.Exists(filePath))
+                {
+                    LogManager.Log("Downloading " + fileName);
+
+                    using UnityWebRequest request = UnityWebRequest.Get(resourcePath);
+                    yield return request.SendWebRequest();
+
+                    if (request.result != UnityWebRequest.Result.Success)
+                    {
+                        LogManager.LogError($"Failed to download {fileName}: {request.error}");
+                        action?.Invoke(null);
+                        yield break;
+                    }
+
+                    File.WriteAllBytes(filePath, request.downloadHandler.data);
+                }
+
+                if (action == null)
+                    yield break;
+                LoadSoundFromFile(fileName, action);
+            }
         }
 
         public static readonly Dictionary<string, Texture2D> textureResourceDictionary = new Dictionary<string, Texture2D>();

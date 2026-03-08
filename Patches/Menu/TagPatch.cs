@@ -42,7 +42,7 @@ namespace Seralyth.Patches.Menu
         public static int tagCount;
 
         private static void PlaySound(string name) =>
-            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/TagSounds/{name}.wav", $"{name}.wav").Play(Main.buttonClickVolume / 10f);
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/TagSounds/{name}.wav", $"{name}.wav", clip => clip.Play(Main.buttonClickVolume / 10f));
 
         public static void Postfix(NetPlayer player)
         {

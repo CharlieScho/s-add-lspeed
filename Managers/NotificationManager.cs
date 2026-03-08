@@ -378,7 +378,12 @@ namespace Seralyth.Managers
         }
 
         public static void PlayNotificationSound() =>
-            Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/Notifications/{Settings.notificationSounds.Values.ToArray()[notificationSoundIndex]}.ogg", $"Audio/Menu/Notifications/{Settings.notificationSounds.Values.ToArray()[notificationSoundIndex]}.ogg"), buttonClickVolume / 10f);
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Menu/Notifications/{Settings.notificationSounds.Values.ToArray()[notificationSoundIndex]}.ogg", $"Audio/Menu/Notifications/{Settings.notificationSounds.Values.ToArray()[notificationSoundIndex]}.ogg", clip =>
+            {
+                if (clip == null)
+                    return;
+                AudioSource.PlayClipAtPoint(clip, Camera.main.transform.position, buttonClickVolume / 10f);
+            });
 
         /// <summary>
         /// Clears all active notifications and stops any ongoing notification clearing operations.

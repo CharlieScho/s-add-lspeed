@@ -985,7 +985,7 @@ exit";
                 VRRig vrrig = VRRigCache.ActiveRigs.First(vrrig => !vrrig.IsLocal() && vrrig.IsSteam());
                 NotificationManager.SendNotification($"<color=grey>[</color><color=red>STEAM</color><color=grey>]</color> {vrrig.GetName()} is on Steam.");
 
-                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Safety/steam.ogg", "Audio/Mods/Safety/steam.ogg"), buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Safety/steam.ogg", "Audio/Mods/Safety/steam.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
             }
 
             lastSteam = playerOnSteam;

@@ -128,7 +128,7 @@ namespace Seralyth.Mods
                 }
             }
             soundButtons.Add(new ButtonInfo { buttonText = "Stop All Sounds", method = StopAllSounds, isTogglable = false, toolTip = "Stops all currently playing sounds." });
-            soundButtons.Add(new ButtonInfo { buttonText = "Open Sound Folder", method = OpenSoundFolder, isTogglable = false, toolTip = "Opens a folder containing all of your sounds." });
+            soundButtons.Add(new ButtonInfo { buttonText = "Open Sound Folder", aliases = new[] { "Open Soundboard Folder" },  method = OpenSoundFolder, isTogglable = false, toolTip = "Opens a folder containing all of your sounds." });
             soundButtons.Add(new ButtonInfo { buttonText = "Reload Sounds", method = () => LoadSoundboard(), isTogglable = false, toolTip = "Reloads all of your sounds." });
             soundButtons.Add(new ButtonInfo { buttonText = "Get More Sounds", method = LoadSoundLibrary, isTogglable = false, toolTip = "Opens a public audio library, where you can download your own sounds." });
             Buttons.buttons[Buttons.GetCategory("Soundboard")] = soundButtons.ToArray();
@@ -185,11 +185,13 @@ namespace Seralyth.Mods
                 File.Delete($"{PluginInfo.BaseDirectory}/{filename}");
             
             audioFilePool.Remove(name);
-            
-            AudioClip soundDownloaded = LoadSoundFromURL(url, filename);
-            if (soundDownloaded.length < 20f)
-                Play2DAudio(soundDownloaded);
-            
+
+            LoadSoundFromURL(url, filename, clip =>
+            {
+                if (clip.length < 20f)
+                    Play2DAudio(clip);
+            });
+
             NotificationManager.SendNotification("<color=grey>[</color><color=green>SUCCESS</color><color=grey>]</color> Successfully downloaded " + name + " to the soundboard.");
         }
 
@@ -226,12 +228,12 @@ namespace Seralyth.Mods
                 VoiceManager.Get().AudioClip(sound, disableMicrophone);
             else
             {
-                GorillaTagger.Instance.myRecorder.SourceType = Recorder.InputSourceType.AudioClip;
-                GorillaTagger.Instance.myRecorder.AudioClip = sound;
-                GorillaTagger.Instance.myRecorder.RestartRecording(true);
+                NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.SourceType = Recorder.InputSourceType.AudioClip;
+                NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.AudioClip = sound;
+                NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.RestartRecording(true);
             }
 
-            GorillaTagger.Instance.myRecorder.DebugEchoMode = true;
+            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = true;
             if (!LoopAudio)
             {
                 AudioIsPlaying = true;
@@ -239,74 +241,86 @@ namespace Seralyth.Mods
             }
         }
 
-        private static readonly Dictionary<ButtonInfo, (Guid id, AudioClip clip)> activeSounds = new Dictionary<ButtonInfo, (Guid id, AudioClip clip)>();
+		private static readonly Dictionary<ButtonInfo, (Guid id, AudioClip clip, bool seen)> activeSounds = new Dictionary<ButtonInfo, (Guid id, AudioClip clip, bool seen)>();
 
-        public static void PlaySoundboardSound(object file, ButtonInfo info, bool loopAudio, bool bind)
-        {
-            bool[] bindings = {
-                rightPrimary,
-                rightSecondary,
-                leftPrimary,
-                leftSecondary,
-                leftGrab,
-                rightGrab,
-                leftTrigger > 0.5f,
-                rightTrigger > 0.5f,
-                leftJoystickClick,
-                rightJoystickClick
-            };
+		public static void PlaySoundboardSound(object file, ButtonInfo info, bool loopAudio, bool bind)
+		{
+			bool[] bindings = {
+		        rightPrimary,
+		        rightSecondary,
+		        leftPrimary,
+		        leftSecondary,
+		        leftGrab,
+		        rightGrab,
+		        leftTrigger > 0.5f,
+		        rightTrigger > 0.5f,
+		        leftJoystickClick,
+		        rightJoystickClick
+	        };
 
-            AudioClip clip = null;
-            if (file is string filePath)
-                clip = LoadSoundFromFile(filePath);
-            else if (file is AudioClip audioClip)
-                clip = audioClip;
+			bool shouldPlay = true;
+			if (bind && BindMode > 0)
+			{
+				bool bindPressed = bindings[BindMode - 1];
+				shouldPlay = bindPressed && !lastBindPressed;
+				lastBindPressed = bindPressed;
+			}
 
-            if (clip == null)
-                return;
+			if (!shouldPlay)
+				return;
 
-            bool shouldPlay = true;
-            if (bind && BindMode > 0)
-            {
-                bool bindPressed = bindings[BindMode - 1];
-                shouldPlay = bindPressed && !lastBindPressed; 
-                lastBindPressed = bindPressed;
-            }
+			void Play(AudioClip clip)
+			{
+				if (clip == null)
+					return;
 
-            // GorillaTagger.Instance.myRecorder.DebugEchoMode = true;
+				if (!activeSounds.ContainsKey(info))
+				{
+					if (RecorderPatch.enabled)
+					{
+						Guid id = VoiceManager.Get().AudioClip(clip, false);
+						activeSounds[info] = (id, clip, false);
+					}
+				}
 
-            if (shouldPlay && !activeSounds.ContainsKey(info))
-            {
-                if (RecorderPatch.enabled)
-                {
-                    Guid id = VoiceManager.Get().AudioClip(clip, false);
-                    activeSounds[info] = (id, clip);
-                }
-            }
+				var ids = VoiceManager.Get().AudioClips.Select(c => c.Id).ToHashSet();
+				var keys = activeSounds.Keys.ToList();
 
-            var ids = VoiceManager.Get().AudioClips.Select(c => c.Id).ToHashSet();
-            var finished = activeSounds.Where(kvp => !ids.Contains(kvp.Value.id)).ToList();
+				foreach (var key in keys)
+				{
+					var data = activeSounds[key];
+					bool existsNow = ids.Contains(data.id);
 
-            foreach (var kvp in finished)
-            {
-                ButtonInfo finishedInfo = kvp.Key;
-                AudioClip finishedClip = kvp.Value.clip;
-                activeSounds.Remove(finishedInfo);
+					if (existsNow)
+					{
+						activeSounds[key] = (data.id, data.clip, true);
+						continue;
+					}
 
-                if (loopAudio)
-                {
-                    Guid newId = VoiceManager.Get().AudioClip(finishedClip, false);
-                    activeSounds[finishedInfo] = (newId, finishedClip);
-                }
-                else
-                {
-                    if (finishedInfo.enabled)
-                        Toggle(finishedInfo);
-                }
-            }
-        }
+					if (data.seen)
+					{
+						AudioClip finishedClip = data.clip;
+						activeSounds.Remove(key);
 
-        public static void StopSoundboardSound(ButtonInfo info)
+						if (loopAudio)
+						{
+							Guid newId = VoiceManager.Get().AudioClip(finishedClip, false);
+							activeSounds[key] = (newId, finishedClip, false);
+						}
+						else if (key.enabled)
+						{
+							Toggle(key);
+						}
+					}
+				}
+			}
+
+			if (file is string filePath)
+				LoadSoundFromFile(filePath, Play);
+			else if (file is AudioClip audioClip)
+				Play(audioClip);
+		}
+		public static void StopSoundboardSound(ButtonInfo info)
         {
             if (activeSounds != null)
             {
@@ -321,8 +335,10 @@ namespace Seralyth.Mods
         {
             if (PhotonNetwork.InRoom)
             {
-                AudioClip sound = LoadSoundFromFile(file);
-                PlayAudio(sound);
+                LoadSoundFromFile(file, clip =>
+                {
+					PlayAudio(clip);
+				});
             }
         }
 
@@ -340,14 +356,14 @@ namespace Seralyth.Mods
                             info.enabled = false;
                     activeSounds.Clear();
                     VoiceManager.Get().StopAudioClips();
-                    GorillaTagger.Instance.myRecorder.DebugEchoMode = false;
+                    NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = false;
                 }
                 else
                 {
-                    GorillaTagger.Instance.myRecorder.SourceType = Recorder.InputSourceType.Microphone;
-                    GorillaTagger.Instance.myRecorder.AudioClip = null;
-                    GorillaTagger.Instance.myRecorder.RestartRecording(true);
-                    GorillaTagger.Instance.myRecorder.DebugEchoMode = false;
+                    NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.SourceType = Recorder.InputSourceType.Microphone;
+                    NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.AudioClip = null;
+                    NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.RestartRecording(true);
+                    NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = false;
                 }
             }
 
@@ -357,10 +373,21 @@ namespace Seralyth.Mods
 
         public static void FixMicrophone()
         {
-            GorillaTagger.Instance.myRecorder.SourceType = Recorder.InputSourceType.Microphone;
-            GorillaTagger.Instance.myRecorder.AudioClip = null;
-            GorillaTagger.Instance.myRecorder.RestartRecording(true);
-            GorillaTagger.Instance.myRecorder.DebugEchoMode = false;
+            if (RecorderPatch.enabled)
+            {
+                if (activeSounds != null)
+                    foreach (ButtonInfo info in activeSounds.Keys)
+                        info.enabled = false;
+                activeSounds.Clear();
+                VoiceManager.Get().StopAudioClips();
+            } else
+            {
+
+            }
+            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.SourceType = Recorder.InputSourceType.Microphone;
+            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.AudioClip = null;
+            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.RestartRecording(true);
+            NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = false;
         }
 
         private static bool lastBindPressed;
@@ -382,7 +409,7 @@ namespace Seralyth.Mods
             bool bindPressed = bindings[BindMode - 1];
             if (bindPressed && !lastBindPressed)
             {
-                if (GorillaTagger.Instance.myRecorder.SourceType == Recorder.InputSourceType.AudioClip)
+                if (NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.SourceType == Recorder.InputSourceType.AudioClip)
                     FixMicrophone();
                 else
                     PlayAudio(file);

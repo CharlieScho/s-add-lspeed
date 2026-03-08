@@ -558,7 +558,7 @@ namespace Seralyth.Mods
                 PlayerPrefs.Save();
             }
 
-            Recorder mic = GorillaTagger.Instance.myRecorder;
+            Recorder mic = NetworkSystem.Instance.VoiceConnection.PrimaryRecorder;
             if (mic == null)
                 return;
 

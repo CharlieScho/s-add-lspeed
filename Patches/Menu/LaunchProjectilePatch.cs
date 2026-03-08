@@ -38,7 +38,7 @@ namespace Seralyth.Patches.Menu
                 GorillaTagger.Instance.rigidbody.linearVelocity = __instance.GetLaunchVelocity();
 
                 if (dynamicSounds)
-                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/AngryBirds/launch.ogg", "Audio/Mods/Fun/AngryBirds/launch.ogg").Play(buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/AngryBirds/launch.ogg", "Audio/Mods/Fun/AngryBirds/launch.ogg", clip => clip.Play(buttonClickVolume / 10f));
             }
         }
     }

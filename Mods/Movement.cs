@@ -1234,7 +1234,7 @@ namespace Seralyth.Mods
             {
                 portalGun = LoadObject<GameObject>("PortalGun");
                 portalGun.transform.SetParent(VRRig.LocalRig.rightHandTransform.parent, false);
-                Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portalgun_powerup.ogg", "Audio/Mods/Movement/PortalGun/portalgun_powerup.ogg"), buttonClickVolume / 10f);
+                LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portalgun_powerup.ogg", "Audio/Mods/Movement/PortalGun/portalgun_powerup.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
             }
 
             if (portalGun)
@@ -1258,11 +1258,11 @@ namespace Seralyth.Mods
                     var portalNotToUse = flipped ? bluePortal : orangePortal;
                     if (portalNotToUse && (Vector3.Distance(ray.point, portalNotToUse.transform.position) < 1f || ray.point == Vector3.zero))
                     {
-                        Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_invalid.ogg", "Audio/Mods/Movement/PortalGun/portal_invalid.ogg"), buttonClickVolume / 10f);
+                        LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_invalid.ogg", "Audio/Mods/Movement/PortalGun/portal_invalid.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
                         portalDelay = Time.time + 0.5f;
                         return;
                     }
-                    Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portalgun_blue.ogg", "Audio/Mods/Movement/PortalGun/portalgun_blue.ogg"), buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portalgun_blue.ogg", "Audio/Mods/Movement/PortalGun/portalgun_blue.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
                     GameObject portalToUse;
                     if (flipped)
                     {
@@ -1288,7 +1288,7 @@ namespace Seralyth.Mods
                     portalGun.transform.Find("PortalGun/Light").GetComponent<Renderer>().material.color = color;
                     portalGun.transform.Find("PortalGun/Light/Tube").GetComponent<Renderer>().material.color = color;
 
-                    Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portalgun_fizzle.ogg", "Audio/Mods/Movement/PortalGun/portalgun_fizzle.ogg"), buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portalgun_fizzle.ogg", "Audio/Mods/Movement/PortalGun/portalgun_fizzle.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
                     flipDelay = Time.time + 0.5f;
                 }
                 if (bluePortal && orangePortal)
@@ -1315,7 +1315,7 @@ namespace Seralyth.Mods
                     if (blueView.activeSelf && orangeView.activeSelf && !playedOpen)
                     {
                         string sound = flipped ? "portal_open1.ogg" : "portal_open2.ogg";
-                        Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/{sound}", $"Audio/Mods/Movement/PortalGun/{sound}"), buttonClickVolume / 10f);
+                        LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/{sound}", $"Audio/Mods/Movement/PortalGun/{sound}", clip => Play2DAudio(clip, buttonClickVolume / 10f));
 
                         PortalTrigger blueTrigger = blueView.GetOrAddComponent<PortalTrigger>();
                         PortalTrigger orangeTrigger = orangeView.GetOrAddComponent<PortalTrigger>();
@@ -1328,7 +1328,7 @@ namespace Seralyth.Mods
                 }
                 if (rightPrimary && (bluePortal || orangePortal))
                 {
-                    Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_close.ogg", "Audio/Mods/Movement/PortalGun/portal_close.ogg"), buttonClickVolume / 10f);
+                    LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_close.ogg", "Audio/Mods/Movement/PortalGun/portal_close.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
                     Object.Destroy(bluePortal);
                     Object.Destroy(orangePortal);
                     playedOpen = false;
@@ -1350,10 +1350,10 @@ namespace Seralyth.Mods
                 switch (goingThrough)
                 {
                     case true when !inPortal:
-                        Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_enter1.ogg", "Audio/Mods/Movement/PortalGun/portal_enter1.ogg"), buttonClickVolume / 10f);
+                        LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_enter1.ogg", "Audio/Mods/Movement/PortalGun/portal_enter1.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
                         break;
                     case false when inPortal:
-                        Play2DAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_exit1.ogg", "Audio/Mods/Movement/PortalGun/portal_exit1.ogg"), buttonClickVolume / 10f);
+                        LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_exit1.ogg", "Audio/Mods/Movement/PortalGun/portal_exit1.ogg", clip => Play2DAudio(clip, buttonClickVolume / 10f));
                         break;
                 }
 
@@ -1428,7 +1428,7 @@ namespace Seralyth.Mods
 
         public static IEnumerator TeleportObject(GameObject obj, GameObject portal)
         {
-            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_exit1.ogg", "Audio/Mods/Movement/PortalGun/portal_exit1.ogg").PlayAt(obj.transform.position, buttonClickSound / 20f);
+            LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Movement/PortalGun/portal_exit1.ogg", "Audio/Mods/Movement/PortalGun/portal_exit1.ogg", clip => clip.PlayAt(obj.transform.position, buttonClickSound / 20f));
 
             if (obj.TryGetComponent(out Rigidbody rigidbody) || obj.TryGetComponentInParent(out rigidbody))
                 rigidbody.linearVelocity = portal.transform.up * rigidbody.linearVelocity.magnitude * 1.2f;
@@ -5253,7 +5253,7 @@ namespace Seralyth.Mods
         }
         public static AudioClip CreateTinnitusSound()
         {
-            int sampleRate = 48000;
+            int sampleRate = VoiceManager.Get().SamplingRate;
             int samples = (int)(sampleRate * 180f);
             AudioClip clip = AudioClip.Create("Tinnitus", samples, 1, sampleRate, false);
 
@@ -5269,7 +5269,7 @@ namespace Seralyth.Mods
             return clip;
         }
 
-        public static AudioClip tinnitus;
+        public static Dictionary<AudioClip, Guid> tinnitus;   
         public static void TinnitusGun()
         {
 
@@ -5287,11 +5287,11 @@ namespace Seralyth.Mods
                         gunLocked = true;
                         lockTarget = gunTarget;
 
-                        if (tinnitus == null)
-                            tinnitus = CreateTinnitusSound();
-                        Sound.PlayAudio(tinnitus);
+						AudioClip clip = CreateTinnitusSound();
+						Guid id = VoiceManager.Get().AudioClip(clip);
+						tinnitus[clip] = id;
                         
-                        GorillaTagger.Instance.myRecorder.DebugEchoMode = tinnitusSelf;
+                        NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = tinnitusSelf;
 
                         SerializePatch.OverrideSerialization = () =>
                         {
@@ -5327,10 +5327,10 @@ namespace Seralyth.Mods
         public static void TinnitusAll()
         {
             if (!PhotonNetwork.InRoom) return;
-            if (tinnitus == null)
-                tinnitus = CreateTinnitusSound();
-            Sound.PlayAudio(tinnitus);
-            GorillaTagger.Instance.myRecorder.DebugEchoMode = tinnitusSelf;
+			AudioClip clip = CreateTinnitusSound();
+			Guid id = VoiceManager.Get().AudioClip(clip);
+			tinnitus[clip] = id;
+			NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.DebugEchoMode = tinnitusSelf;
 
             SerializePatch.OverrideSerialization = () => {
                 MassSerialize(true, new[] { GorillaTagger.Instance.myVRRig.GetView });
@@ -5356,8 +5356,8 @@ namespace Seralyth.Mods
         public static void DisableTinnitus()
         {
             SerializePatch.OverrideSerialization = null;
-            Sound.FixMicrophone();
-        }
+            VoiceManager.Get().StopAudioClip(tinnitus.Values.First());
+		}
 
         private static float hoverboardSpawnDelay;
         private static float soundSpamDelay;
@@ -5534,7 +5534,7 @@ namespace Seralyth.Mods
                         gunLocked = true;
                         lockTarget = gunTarget;
 
-                        Sound.PlayAudio(LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/shutdown.ogg", "Audio/Mods/Fun/shutdown.ogg"));
+                        LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/shutdown.ogg", "Audio/Mods/Fun/shutdown.ogg", clip => Sound.PlayAudio(clip));
                     }
                 }
             }

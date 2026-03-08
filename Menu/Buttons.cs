@@ -300,7 +300,7 @@ namespace Seralyth.Menu
             new[] { // Room Settings [3]
                 new ButtonInfo { buttonText = "Exit Room Settings", method =() => CurrentCategoryName = "Settings", isTogglable = false, toolTip = "Returns you back to the settings menu."},
 
-                new ButtonInfo { buttonText = "20 Player Rooms", toolTip = "Changes Create Public and Create Private to 20 player capacity." },
+                new ButtonInfo { buttonText = "20 Player Rooms", toolTip = "Changes Create Public and Create Private to support 20 players." },
                 new ButtonInfo { buttonText = "Change Reconnect Time", overlapText = "Change Reconnect Time <color=grey>[</color><color=green>5</color><color=grey>]</color>", method =() => Settings.ChangeReconnectTime(), enableMethod =() => Settings.ChangeReconnectTime(), disableMethod =() => Settings.ChangeReconnectTime(false), incremental = true, isTogglable = false, toolTip = "Changes the amount of time waited before attempting to reconnect again."},
             },
 
@@ -382,6 +382,7 @@ namespace Seralyth.Menu
                 new ButtonInfo { buttonText = "BlueProj", overlapText = "Blue <color=grey>[</color><color=green>0</color><color=grey>]</color>", method =() => Projectiles.IncreaseBlue(), enableMethod =() => Projectiles.IncreaseBlue(), disableMethod =() => Projectiles.IncreaseBlue(false), incremental = true, isTogglable = false, toolTip = "Makes projectiles more blue." },
 
                 new ButtonInfo { buttonText = "Custom Colored Projectiles", toolTip = "Makes the projectile color the custom color (buttons above)." },
+                new ButtonInfo { buttonText = "Friend Sided Projectiles", enableMethod =() => Projectiles.friendSided = true, disableMethod =() => Projectiles.friendSided = false, toolTip = "Makes projectiles only appear for you and your friends on the menu." },
                 new ButtonInfo { buttonText = "Client Sided Projectiles", enableMethod =() => Projectiles.clientSided = true, disableMethod =() => Projectiles.clientSided = false, toolTip = "Makes projectiles only appear for you." },
 
                 new ButtonInfo { buttonText = "Override Projectile Index", method =() => IndexPatch.enabled = true, disableMethod =() => IndexPatch.enabled = false, toolTip = "Forces a specific projectile index on random projectiles." },
@@ -1048,7 +1049,7 @@ namespace Seralyth.Menu
                 new ButtonInfo { buttonText = "Overstimulate All", method = Movement.OverstimulateAll, disableMethod =() => SerializePatch.OverrideSerialization = null, toolTip = "Overstimulates everyone in the room."},
 
                 new ButtonInfo { buttonText = "Shutdown Headset Gun", method = Movement.ShutdownHeadsetGun, disableMethod = Movement.DisableTinnitus, toolTip = "Pretends to shut down the headset of whoever your hand desires."},
-                new ButtonInfo { buttonText = "Shutdown Headset All", enableMethod =() => Sound.PlayAudio(AssetUtilities.LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/shutdown.ogg", "Audio/Mods/Fun/shutdown.ogg")), method = Movement.ShutdownHeadsetAll, disableMethod = Movement.DisableTinnitus, toolTip = "Pretends to shut down the headset of everyone in the room."},
+                new ButtonInfo { buttonText = "Shutdown Headset All", enableMethod =() => AssetUtilities.LoadSoundFromURL($"{PluginInfo.ServerResourcePath}/Audio/Mods/Fun/shutdown.ogg", "Audio/Mods/Fun/shutdown.ogg", clip => Sound.PlayAudio(clip)), method = Movement.ShutdownHeadsetAll, disableMethod = Movement.DisableTinnitus, toolTip = "Pretends to shut down the headset of everyone in the room."},
 
                 new ButtonInfo { buttonText = "Schizophrenic Gun", method = Movement.SchizophrenicGun, toolTip = "Makes you not appear for whoever your hand desires."},
                 new ButtonInfo { buttonText = "Reverse Schizophrenic Gun", method = Movement.ReverseSchizoGun, toolTip = "Makes you only appear for whoever your hand desires."},
@@ -1077,7 +1078,7 @@ namespace Seralyth.Menu
 
                 new ButtonInfo { buttonText = "Prioritize Voice Gun", method = Fun.PrioritizeVoiceGun, toolTip = "Prioritizes whoever your hand desires' voice."},
                 new ButtonInfo { buttonText = "Deprioritize Voice Gun", method = Fun.DeprioritizeVoiceGun, toolTip = "Deprioritizes whoever your hand desires' voice."},
-                new ButtonInfo { buttonText = "Reset Voice All", method = Fun.ResetVoiceAll, toolTip = "Resets everyones voice back to normal."},
+                new ButtonInfo { buttonText = "Reset Voice", method = Fun.ResetVoiceAll, toolTip = "Resets everyones voice back to normal."},
 
                 new ButtonInfo { buttonText = "Mute Gun", method = Fun.MuteGun, toolTip = "Mutes or unmutes whoever your hand desires."},
                 new ButtonInfo { buttonText = "Mute All", method = Fun.MuteAll, disableMethod = Fun.UnmuteAll, toolTip = "Mutes everyone in the room."},
@@ -1095,30 +1096,22 @@ namespace Seralyth.Menu
                 new ButtonInfo { buttonText = "Mute DJ Sets", method = Fun.MuteDJSets, disableMethod = Fun.UnmuteDJSets, toolTip = "Mutes every DJ set so you don't have to hear the worst music known to man."},
                 new ButtonInfo { buttonText = "Infinite Dreidel", method =() => DreidelPatch.enabled = true, disableMethod =() => DreidelPatch.enabled = false, toolTip = "Makes the dreidel cosmetic spin forever."},
 
-
                 new ButtonInfo { buttonText = "Legacy Microphone", enableMethod =() => { RecorderPatch.enabled = false; Fun.ReloadMicrophone();  }, disableMethod =() => { RecorderPatch.enabled = true; Fun.ReloadMicrophone(); }, toolTip = "Reverts the microphone system into using the legacy input switcher. This is generally not recommended." },
-                new ButtonInfo { buttonText = "Low Quality Microphone", method =() => Fun.SetMicrophoneSamplingRate(6000, 4000), disableMethod =() => Fun.SetMicrophoneSamplingRate(20000, 16000), toolTip = "Makes your microphone have really bad quality."},
-                new ButtonInfo { buttonText = "High Quality Microphone", method =() => Fun.SetMicrophoneBitrate(30000), disableMethod =() => Fun.SetMicrophoneBitrate(20000), toolTip = "Makes your microphone have really bad quality."},
+                new ButtonInfo { buttonText = "Low Quality Microphone", enableMethod =() => Fun.SetMicrophoneQuality(6000, 4000), disableMethod =() => Fun.SetMicrophoneQuality(20000, 16000), toolTip = "Makes your microphone have really bad quality."},
+                new ButtonInfo { buttonText = "High Quality Microphone", enableMethod =() => Fun.SetMicrophoneQuality(30000, 24000), disableMethod =() => Fun.SetMicrophoneQuality(20000, 16000), toolTip = "Makes your microphone have really high quality."},
                 new ButtonInfo { buttonText = "Loud Microphone", method =() => Fun.SetMicrophoneAmplification(true), disableMethod =() => Fun.SetMicrophoneAmplification(false), toolTip = "Makes your microphone really loud."},
-                new ButtonInfo { buttonText = "Echo Microphone", method =() => Fun.EchoMicrophone(true), disableMethod =() => Fun.EchoMicrophone(false), toolTip = "Makes your microphone echo."},
-                new ButtonInfo { buttonText = "Glitchy Microphone", method =() => Fun.GlitchyMicrophone(true), disableMethod =() => Fun.GlitchyMicrophone(false), toolTip = "Makes your microphone glitchy."},
-                new ButtonInfo { buttonText = "Laggy Microphone", method =() => Fun.LaggyMicrophone(true), disableMethod =() => Fun.LaggyMicrophone(false), toolTip = "Makes your microphone laggy."},
 
                 new ButtonInfo { buttonText = "Mute Microphone", method =() => Fun.MuteMicrophone(true), disableMethod =() => Fun.MuteMicrophone(false), toolTip = "Disables your microphone."},
-
-                new ButtonInfo { buttonText = "Very High Pitch Microphone", method =() => Fun.SetMicrophonePitch(2.5f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone very very high pitched."},
-                new ButtonInfo { buttonText = "High Pitch Microphone", method =() => Fun.SetMicrophonePitch(1.5f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone high pitched."},
-                new ButtonInfo { buttonText = "Low Pitch Microphone", method =() => Fun.SetMicrophonePitch(0.5f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone low pitched."},
-                new ButtonInfo { buttonText = "Very Low Pitch Microphone", method =() => Fun.SetMicrophonePitch(0.01f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone very very low pitched."},
-
                 new ButtonInfo { buttonText = "Reload Microphone", aliases = new[] { "Restart Microphone" }, method = Fun.ReloadMicrophone, isTogglable = false,  toolTip = "Restarts / fixes your microphone."},
+
+                new ButtonInfo { buttonText = "Voice Changers", method =() => CurrentCategoryName = "Voice Changers", isTogglable = false, toolTip = "Brings you into a category with voice changers."},
 
                 new ButtonInfo { buttonText = "Microphone Feedback", method =() => Fun.SetDebugEchoMode(true), disableMethod =() => Fun.SetDebugEchoMode(false), toolTip = "Plays sound coming through your microphone back to your speakers."},
                 new ButtonInfo { buttonText = "Copy Voice Gun", method = Fun.CopyVoiceGun, disableMethod = Fun.DisableCopyVoice, toolTip = "Copies the voice of whoever your hand desires."},
 
                 new ButtonInfo { buttonText = "Narrate Text", method =() => PromptText("What would you like to be narrated?", () => SpeakText(keyboardInput), null, "Done", "Cancel"), isTogglable = false, toolTip = "Narrates the text of your desire."},
                 new ButtonInfo { buttonText = "Save Narration", method =() => PromptText("What would you like the narration to say?", () => Fun.SaveNarration(keyboardInput)), isTogglable = false, toolTip = "Saves whatever you want to narrate to your soundboard."},
-                new ButtonInfo { buttonText = "Mask Voice", enableMethod = Fun.MaskVoice, method =() => { Settings.CheckFocus(); GorillaTagger.Instance.myRecorder.IsRecording = Sound.AudioIsPlaying; }, disableMethod = Fun.DisableMaskVoice, toolTip = "Masks your voice with a TTS voice."},
+                new ButtonInfo { buttonText = "Mask Voice", enableMethod = Fun.MaskVoice, method =() => { Settings.CheckFocus(); NetworkSystem.Instance.VoiceConnection.PrimaryRecorder.IsRecording = Sound.AudioIsPlaying; }, disableMethod = Fun.DisableMaskVoice, toolTip = "Masks your voice with a TTS voice."},
 
                 new ButtonInfo { buttonText = "Disable Pitch Scaling", method = Important.DisablePitchScaling, disableMethod = Important.EnablePitchScaling, toolTip = "Disables the pitch effects on players' voices when they are a different scale."},
                 new ButtonInfo { buttonText = "Disable Mouth Movement", method = Important.DisableMouthMovement, disableMethod = Important.EnableMouthMovement, toolTip = "Disables your mouth from moving."},
@@ -2047,13 +2040,6 @@ namespace Seralyth.Menu
                 new ButtonInfo { buttonText = "Guardian Crash Gun", method = Overpowered.GuardianCrashGun, toolTip = "Crashes whoever your hand desires." },
                 new ButtonInfo { buttonText = "Guardian Crash All <color=grey>[</color><color=green>T</color><color=grey>]</color>", method = Overpowered.GuardianCrashAll, toolTip = "Crashes everyone in the room when holding <color=green>trigger</color>." },
 
-                new ButtonInfo { buttonText = "Lag Master Client", method = Overpowered.LagMasterClient, toolTip = "Lags the master client." },
-                new ButtonInfo { buttonText = "Lag Master Client Gun", method = Overpowered.LagMasterClientGun, toolTip = "Lags whoever your hand desires, if they are master client. Credits to EyeCantSee for this stupid idea." },
-
-                new ButtonInfo { buttonText = "Kick Master Client", enableMethod = () => Overpowered.kickCoroutine = CoroutineManager.instance.StartCoroutine(Overpowered.KickMasterClient()), method =() => { if (Overpowered.kickCoroutine == null) Toggle("Kick Master Client"); }, disableMethod =() => { SerializePatch.OverrideSerialization = null; Overpowered.kickCoroutine = null; }, toolTip = "Kicks the master client from the room." },
-                new ButtonInfo { buttonText = "Kick Gun", method = Overpowered.KickGun, disableMethod =() => { SerializePatch.OverrideSerialization = null; Overpowered.kickCoroutine = null; }, toolTip = "Kick whoever your hand desires, if they are master client. Credits to Rexon for making such a stupid mod." },
-                new ButtonInfo { buttonText = "Kick All", enableMethod = () => Overpowered.kickCoroutine = CoroutineManager.instance.StartCoroutine(Overpowered.KickAll()), method =() => { if (Overpowered.kickCoroutine == null) Toggle("Kick All"); }, disableMethod =() => { SerializePatch.OverrideSerialization = null; Overpowered.kickCoroutine = null; }, toolTip = "Kicks everyone above you from the room." },
-
                 new ButtonInfo { buttonText = "Cache Kick Gun", method = Overpowered.CacheKickGun, disableMethod =() => Overpowered.OptimizeEvents = false, toolTip = "Kicks everyone in the room by filling up the room cache." },
                 new ButtonInfo { buttonText = "Cache Kick All", enableMethod = Overpowered.EnableCacheKickAll, method = Overpowered.CacheKickAll, disableMethod =() => Overpowered.OptimizeEvents = false, toolTip = "Kicks everyone in the room by filling up the room cache." },
 
@@ -2479,6 +2465,10 @@ namespace Seralyth.Menu
             new[] { // Fun Settings [36]
                 new ButtonInfo { buttonText = "Exit Fun Settings", method =() => CurrentCategoryName = "Settings", isTogglable = false, toolTip = "Returns you back to the settings menu."},
 
+                new ButtonInfo { buttonText = "Change Soundboard Volume", overlapText = "Change Soundboard Volume <color=grey>[</color><color=green>1</color><color=grey>]</color>", method =() => Fun.ChangeSoundboardVolume(), enableMethod =() => Fun.ChangeSoundboardVolume(), disableMethod =() => Fun.ChangeSoundboardVolume(false), incremental = true, isTogglable = false, toolTip = "Changes the volume of your sounds." },
+
+                new ButtonInfo { buttonText = "Change Soundboard Speed", overlapText = "Change Soundboard Speed <color=grey>[</color><color=green>1</color><color=grey>]</color>", method =() => Fun.ChangeSoundboardPitch(), enableMethod =() => Fun.ChangeSoundboardPitch(), disableMethod =() => Fun.ChangeSoundboardPitch(false), incremental = true, isTogglable = false, toolTip = "Changes the speed of your sounds" },
+
                 new ButtonInfo { buttonText = "Change Head Spin Speed", overlapText = "Change Head Spin Speed <color=grey>[</color><color=green>0</color><color=grey>]</color>", method =() => Fun.ChangeHeadSpinSpeed(), enableMethod =() => Fun.ChangeHeadSpinSpeed(), disableMethod =() => Fun.ChangeHeadSpinSpeed(false), incremental = true, isTogglable = false, toolTip = "Changes the speed of the head spin mods." },
                 new ButtonInfo { buttonText = "Change Tinnitus Hertz", overlapText = "Change Tinnitus Hertz <color=grey>[</color><color=green>6000</color><color=grey>]</color>", method =() => Movement.ChangeTinnitusHz(), enableMethod =() => Movement.ChangeTinnitusHz(), disableMethod =() => Movement.ChangeTinnitusHz(false), incremental = true, isTogglable = false, toolTip = "Changes the target hertz for the tinnitus mods."},
 
@@ -2696,6 +2686,18 @@ namespace Seralyth.Menu
             {
                 new ButtonInfo { buttonText = "Exit Patreon Settings", method =() => CurrentCategoryName = "Main", isTogglable = false, toolTip = "Returns you back to the main page."},
                 new ButtonInfo { buttonText = "Disable Patreon Indicators", enableMethod =() => PatreonManager.IndicatorsEnabled = false, disableMethod =() => PatreonManager.IndicatorsEnabled = true, toolTip = "Disables the memberships that appear above people's head with the menu."}
+            },
+
+            new[] // Voice Changers [49]
+            {
+                new ButtonInfo { buttonText = "Exit Voice Changers", method =() => CurrentCategoryName = "Fun Mods", isTogglable = false, toolTip = "Returns you back to the fun mods."},
+                new ButtonInfo { buttonText = "Echo Microphone", method =() => Fun.EchoMicrophone(true), disableMethod =() => Fun.EchoMicrophone(false), toolTip = "Makes your microphone echo."},
+                new ButtonInfo { buttonText = "Glitchy Microphone", method =() => Fun.GlitchyMicrophone(true), disableMethod =() => Fun.GlitchyMicrophone(false), toolTip = "Makes your microphone glitchy."},
+                new ButtonInfo { buttonText = "Laggy Microphone", method =() => Fun.LaggyMicrophone(true), disableMethod =() => Fun.LaggyMicrophone(false), toolTip = "Makes your microphone laggy."},
+                new ButtonInfo { buttonText = "Very High Pitch Microphone", method =() => Fun.SetMicrophonePitch(2.5f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone very very high pitched."},
+                new ButtonInfo { buttonText = "High Pitch Microphone", method =() => Fun.SetMicrophonePitch(1.5f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone high pitched."},
+                new ButtonInfo { buttonText = "Low Pitch Microphone", method =() => Fun.SetMicrophonePitch(0.5f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone low pitched."},
+                new ButtonInfo { buttonText = "Very Low Pitch Microphone", method =() => Fun.SetMicrophonePitch(0.01f), disableMethod =() => Fun.SetMicrophonePitch(1f), toolTip = "Makes your microphone very very low pitched."},
             }
         };
 
@@ -2748,7 +2750,8 @@ namespace Seralyth.Menu
             "Achievements",
             "Mod List",
             "Patreon Mods",
-            "Patreon Settings"
+            "Patreon Settings",
+            "Voice Changers"
         };
 
         public static int _currentCategoryIndex;
@@ -2935,6 +2938,14 @@ namespace Seralyth.Menu
 /*
 The mod cemetary
 Every mod listed below has been removed from the menu, for one reason or another
+
+new ButtonInfo { buttonText = "Lag Master Client", method = Overpowered.LagMasterClient, toolTip = "Lags the master client." },
+new ButtonInfo { buttonText = "Lag Master Client Gun", method = Overpowered.LagMasterClientGun, toolTip = "Lags whoever your hand desires, if they are master client. Credits to EyeCantSee for this stupid idea." },
+
+new ButtonInfo { buttonText = "Kick Master Client", enableMethod = () => Overpowered.kickCoroutine = CoroutineManager.instance.StartCoroutine(Overpowered.KickMasterClient()), method =() => { if (Overpowered.kickCoroutine == null) Toggle("Kick Master Client"); }, disableMethod =() => { SerializePatch.OverrideSerialization = null; Overpowered.kickCoroutine = null; }, toolTip = "Kicks the master client from the room." },
+new ButtonInfo { buttonText = "Kick Gun", method = Overpowered.KickGun, disableMethod =() => { SerializePatch.OverrideSerialization = null; Overpowered.kickCoroutine = null; }, toolTip = "Kick whoever your hand desires, if they are master client. Credits to Rexon for making such a stupid mod." },
+new ButtonInfo { buttonText = "Kick All", enableMethod = () => Overpowered.kickCoroutine = CoroutineManager.instance.StartCoroutine(Overpowered.KickAll()), method =() => { if (Overpowered.kickCoroutine == null) Toggle("Kick All"); }, disableMethod =() => { SerializePatch.OverrideSerialization = null; Overpowered.kickCoroutine = null; }, toolTip = "Kicks everyone above you from the room." },
+
 
 new ButtonInfo { buttonText = "Lightning Time Overlay", method = Visuals.StrikeTimeOverlay, disableMethod =() => NotificationManager.information.Remove("Lightning"), toolTip = "Displays the time until lightning strikes again."},
 new ButtonInfo { buttonText = "Spawn Lightning", method = Visuals.SpawnLightning, isTogglable = false, toolTip = "Spawns a manual lightning strike client sided." },
